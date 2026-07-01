@@ -1,0 +1,28 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// =============================================================================
+// Prisma Schema — Fileex
+// =============================================================================
+//
+// Generator: Generates the Prisma Client used in application code.
+// Datasource: MySQL 8 — see DATABASE_DESIGN.md for the full schema design.
+//
+// Models are NOT defined here yet.
+// They will be added chunk by chunk as features are implemented:
+//   - Chunk 3.1: User, RefreshToken, StorageStats
+//   - Chunk 3.2: Folder, File
+//   - Chunk 3.3: TrashItem, ActivityLog
+//   - Chunk 3.4: Notification, UserSettings
+//
+// See: docs/DATABASE_DESIGN.md for the complete schema specification.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}

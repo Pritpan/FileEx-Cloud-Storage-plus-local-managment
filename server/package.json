@@ -1,0 +1,25 @@
+{
+    "name":  "fileex-server",
+    "version":  "0.1.0",
+    "private":  true,
+    "description":  "Fileex — Node.js + Express.js REST API",
+    "main":  "src/server.js",
+    "scripts":  {
+                    "dev":  "nodemon src/server.js",
+                    "start":  "node src/server.js",
+                    "db:generate":  "prisma generate",
+                    "db:migrate":  "prisma migrate dev",
+                    "db:studio":  "prisma studio"
+                },
+    "dependencies":  {
+                         "@prisma/client":  "^6.10.1",
+                         "dotenv":  "^16.5.0",
+                         "express":  "^5.1.0",
+                         "mysql2":  "^3.14.1",
+                         "prisma":  "^6.10.1"
+                     },
+    "devDependencies":  {
+                            "nodemon":  "^3.1.10"
+                        },
+    "type":  "module"
+}
