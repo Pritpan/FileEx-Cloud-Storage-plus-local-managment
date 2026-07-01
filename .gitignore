@@ -1,0 +1,307 @@
+# =============================================================================
+# Fileex — .gitignore
+# Covers: Node.js, React, Vite, Express, Electron, Prisma, MySQL, VS Code,
+#         macOS, Windows
+# =============================================================================
+
+
+# =============================================================================
+# PERSONAL / LOCAL
+# =============================================================================
+
+# Personal engineering notebook — never committed
+notes/
+
+
+# =============================================================================
+# NODE.JS
+# =============================================================================
+
+# Dependencies
+node_modules/
+.npm
+.yarn/
+.pnp.*
+yarn.lock
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime / process
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage and test output
+coverage/
+*.lcov
+.nyc_output/
+test-results/
+
+# Diagnostic reports
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Optional npm cache
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# dotenv environment files — NEVER commit secrets
+.env
+.env.*
+!.env.example
+
+# Lock files (committed per-app; excluded at root level)
+package-lock.json
+
+
+# =============================================================================
+# REACT + VITE  (web/)
+# =============================================================================
+
+# Vite build output
+web/dist/
+web/.vite/
+
+# Storybook build
+web/storybook-static/
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Cache
+web/.eslintcache
+web/.stylelintcache
+
+
+# =============================================================================
+# EXPRESS (server/)
+# =============================================================================
+
+# Server build output (if transpiling)
+server/dist/
+server/build/
+
+# Uploads temp directory (if ever used locally)
+server/uploads/
+
+# Server-side cache
+server/.cache/
+
+
+# =============================================================================
+# ELECTRON  (desktop/)
+# =============================================================================
+
+# Electron builder output
+desktop/dist/
+desktop/build/
+desktop/out/
+desktop/release/
+
+# Electron packaged apps
+desktop/*.exe
+desktop/*.dmg
+desktop/*.AppImage
+desktop/*.deb
+desktop/*.rpm
+desktop/*.snap
+desktop/*.zip
+desktop/*.tar.gz
+
+# Electron builder cache
+desktop/.electron-builder-cache/
+
+# Electron dev reload
+desktop/.webpack/
+
+# Vite build output inside desktop renderer
+desktop/renderer/dist/
+
+
+# =============================================================================
+# PRISMA
+# =============================================================================
+
+# Generated Prisma client — regenerated via `prisma generate`
+server/node_modules/.prisma/
+server/prisma/migrations/dev.db
+server/prisma/migrations/dev.db-journal
+
+# SQLite dev databases (if using SQLite locally instead of MySQL)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+
+# =============================================================================
+# MYSQL
+# =============================================================================
+
+# MySQL dump files
+*.sql.gz
+*.dump
+
+# Local DB data directory (if running MySQL locally via docker volume mount)
+mysql-data/
+.mysql/
+
+
+# =============================================================================
+# AWS / CLOUD CREDENTIALS
+# =============================================================================
+
+# AWS credentials — NEVER commit
+.aws/
+aws-credentials.json
+
+# MinIO local config
+.minio/
+
+# Any secrets file
+secrets.json
+*.pem
+*.key
+*.crt
+*.cert
+
+
+# =============================================================================
+# VSCODE
+# =============================================================================
+
+.vscode/*
+
+# Allow these shared VS Code configs to be committed
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# History plugin
+.history/
+
+
+# =============================================================================
+# MACOS
+# =============================================================================
+
+.DS_Store
+.DS_Store?
+._*
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.DocumentRevisions-V100
+.apdisk
+Icon?
+
+# macOS Finder thumbnails
+*.icloud
+
+
+# =============================================================================
+# WINDOWS
+# =============================================================================
+
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+*.stackdump
+
+# Windows Installer files
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+
+# =============================================================================
+# LINUX
+# =============================================================================
+
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+
+# =============================================================================
+# EDITORS & IDEs
+# =============================================================================
+
+# JetBrains (WebStorm, IntelliJ, etc.)
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Sublime Text
+*.sublime-workspace
+*.sublime-project
+
+# Vim / Neovim
+*.swp
+*.swo
+*~
+Session.vim
+.netrwhist
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+
+# =============================================================================
+# DOCKER (if added later)
+# =============================================================================
+
+.dockerignore
+docker-compose.override.yml
+
+
+# =============================================================================
+# TEMPORARY / MISC
+# =============================================================================
+
+# Temporary files
+tmp/
+temp/
+.tmp/
+.temp/
+
+# Lock files at root (each app manages its own)
+*.lock
+
+# Build artifacts
+*.map
+
+# Compressed files
+*.tar
+*.gz
+*.bz2
+*.zip
+*.7z
+*.rar
