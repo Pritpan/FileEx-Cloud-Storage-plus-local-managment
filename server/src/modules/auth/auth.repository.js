@@ -6,29 +6,58 @@
 // Repositories are the ONLY layer that talks to Prisma.
 // Services call repositories — services never import Prisma directly.
 //
-// TODO: Import Prisma client when the User model is added to schema.prisma.
-// TODO: Implement the following methods:
-//
-//   findUserByEmail(email)
-//     → Returns a user record by email, or null if not found.
-//
-//   findUserById(id)
-//     → Returns a user record by primary key.
-//
-//   createUser({ firstName, lastName, email, hashedPassword, storageQuota })
-//     → Inserts a new user row and initialises their StorageStats record.
-//
-//   saveRefreshToken({ userId, tokenHash, expiresAt })
-//     → Inserts a RefreshToken row for the given user.
-//
-//   findRefreshToken(tokenHash)
-//     → Returns the RefreshToken record matching the hash, or null.
-//
-//   deleteRefreshToken(tokenHash)
-//     → Removes a single RefreshToken row (logout).
-//
-//   deleteAllRefreshTokens(userId)
-//     → Removes all RefreshToken rows for a user (logout everywhere).
-//
+// Rule: One repository per module. No cross-module repository imports.
 // See: docs/DATABASE_DESIGN.md — User, RefreshToken, StorageStats models.
 // =============================================================================
+
+import prisma from '../../config/prisma.js';
+
+// ---------------------------------------------------------------------------
+// createUser
+//
+// Inserts a new User row into the `users` table.
+//
+// @param {object} userData
+// @param {string} userData.name
+// @param {string} userData.email          - already lowercased by RegisterSchema
+// @param {string} userData.hashedPassword - bcrypt hash (plain text in this chunk — temporary)
+// @param {string|null} [userData.avatarUrl]
+//
+// @returns {Promise<User>} The created Prisma User object.
+//
+// Note: No duplicate email check here.
+//       That guard lives in the service layer (added in the next chunk).
+//       The DB unique constraint on `email` is the final safety net.
+// ---------------------------------------------------------------------------
+export const createUser = async ({ name, email, hashedPassword, avatarUrl = null }) => {
+  return prisma.user.create({
+    data: {
+      name,
+      email,
+      hashedPassword,
+      avatarUrl,
+    },
+  });
+};
+
+// ---------------------------------------------------------------------------
+// Pending methods — implemented as auth features are built:
+//
+// findUserByEmail(email)
+//   → prisma.user.findUnique({ where: { email } })
+//
+// findUserById(id)
+//   → prisma.user.findUnique({ where: { id } })
+//
+// saveRefreshToken({ userId, tokenHash, expiresAt })
+//   → prisma.refreshToken.create(...)
+//
+// findRefreshToken(tokenHash)
+//   → prisma.refreshToken.findUnique({ where: { tokenHash } })
+//
+// deleteRefreshToken(tokenHash)
+//   → prisma.refreshToken.delete({ where: { tokenHash } })
+//
+// deleteAllRefreshTokens(userId)
+//   → prisma.refreshToken.deleteMany({ where: { userId } })
+// ---------------------------------------------------------------------------

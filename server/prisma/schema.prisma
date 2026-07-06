@@ -24,9 +24,8 @@ generator client {
 }
 
 datasource db {
-  // Prisma 7: connection URL is configured in prisma.config.ts, not here.
-  // See: https://pris.ly/d/config-datasource
   provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 // =============================================================================

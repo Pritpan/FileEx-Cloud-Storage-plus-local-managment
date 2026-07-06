@@ -25,27 +25,33 @@ export const getModuleStatus = async () => {
 };
 
 /**
- * register(userData)
+/**
+ * register({ name, email, password })
  *
- * Receives validated data from the controller.
+ * Orchestrates user registration.
  *
- * Current: skeleton — returns the data to confirm the flow works end-to-end.
+ * ⚠️  TEMPORARY: password is passed directly as hashedPassword.
+ *     This will be replaced with bcrypt.hash() in the next chunk.
  *
- * Next chunk will:
- *   1. Check authRepository.findUserByEmail — reject if duplicate
- *   2. bcrypt.hash(password) — never store plaintext
- *   3. authRepository.createUser — insert row + init StorageStats
- *   4. Return sanitised user object (no hashedPassword)
+ * TODO (next chunk): check authRepository.findUserByEmail — reject if duplicate
+ * TODO (next chunk): replace `password` with `await bcrypt.hash(password, 12)`
  */
-export const register = async (userData) => {
-  // TODO (next chunk): check for duplicate email
-  // TODO (next chunk): hash password with bcrypt
-  // TODO (next chunk): persist via authRepository.createUser()
+export const register = async ({ name, email, password }) => {
+  const user = await authRepository.createUser({
+    name,
+    email,
+    hashedPassword: password,  // ⚠️ TEMPORARY — plain text, replace with bcrypt
+    avatarUrl: null,
+  });
+
+  // Never return hashedPassword to the caller.
+  // Destructure it out and return only safe fields.
+  const { hashedPassword: _, ...safeUser } = user;
 
   return {
     success: true,
-    message: 'Register flow working.',
-    data: userData,
+    message: 'User registered successfully.',
+    data: safeUser,
   };
 };
 
