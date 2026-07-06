@@ -1,21 +1,22 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 // =============================================================================
 // Prisma Schema — Fileex
 // =============================================================================
 //
-// Generator: Generates the Prisma Client used in application code.
-// Datasource: MySQL 8 — see DATABASE_DESIGN.md for the full schema design.
+// Models are added chunk by chunk as features are implemented.
+// See: docs/DATABASE_DESIGN.md for the full schema specification.
 //
-// Models are NOT defined here yet.
-// They will be added chunk by chunk as features are implemented:
-//   - Chunk 3.1: User, RefreshToken, StorageStats
-//   - Chunk 3.2: Folder, File
-//   - Chunk 3.3: TrashItem, ActivityLog
-//   - Chunk 3.4: Notification, UserSettings
+// Current models:
+//   ✅ User          — Chunk 3.1
 //
-// See: docs/DATABASE_DESIGN.md for the complete schema specification.
+// Pending models:
+//   ⬜ RefreshToken  — Chunk 3.2 (auth)
+//   ⬜ StorageStats  — Chunk 3.2 (auth)
+//   ⬜ Folder        — Chunk 4.1
+//   ⬜ File          — Chunk 4.2
+//   ⬜ TrashItem     — Chunk 5.1
+//   ⬜ ActivityLog   — Chunk 5.2
+//   ⬜ Notification  — Chunk 6.1
+//   ⬜ UserSettings  — Chunk 6.2
 // =============================================================================
 
 generator client {
@@ -23,6 +24,51 @@ generator client {
 }
 
 datasource db {
+  // Prisma 7: connection URL is configured in prisma.config.ts, not here.
+  // See: https://pris.ly/d/config-datasource
   provider = "mysql"
-  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// User
+//
+// The central entity. Every file, folder, and activity belongs to a User.
+// See: docs/DATABASE_DESIGN.md §3.1
+// =============================================================================
+model User {
+  // Primary key — CUID is URL-safe, collision-resistant, and sortable.
+  // Preferred over UUID for application-generated IDs.
+  id             String   @id @default(cuid())
+
+  // Display name for the user's profile.
+  name           String
+
+  // Login identifier. Unique across all users. Indexed automatically by Prisma.
+  email          String   @unique
+
+  // bcrypt hash of the user's password. The raw password is NEVER stored.
+  hashedPassword String
+
+  // S3 URL for the user's profile picture. Null until the user uploads one.
+  avatarUrl      String?
+
+  // Automatically set to the current timestamp when the row is inserted.
+  createdAt      DateTime @default(now())
+
+  // Automatically updated by Prisma on every write to this row.
+  updatedAt      DateTime @updatedAt
+
+  // ---------------------------------------------------------------------------
+  // Relations — added as each feature module is implemented.
+  // Uncomment each line when its corresponding model is added to this schema.
+  // ---------------------------------------------------------------------------
+  // refreshTokens  RefreshToken[]
+  // storageStats   StorageStats?
+  // folders        Folder[]
+  // files          File[]
+  // notifications  Notification[]
+  // settings       UserSettings?
+  // activityLogs   ActivityLog[]
+
+  @@map("users")
 }
