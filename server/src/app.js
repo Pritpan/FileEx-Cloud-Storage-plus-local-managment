@@ -9,11 +9,12 @@
 // What does NOT live here:
 //   - dotenv loading  → server.js (must happen before anything else)
 //   - HTTP server     → server.js
-//   - Route mounting  → added per module as features are built
+//   - Route mounting  → registered below, one import per module
 //   - Error handler   → added when first route is wired
 // =============================================================================
 
 import express from 'express';
+import authRoutes from './modules/auth/auth.routes.js';
 
 const app = express();
 
@@ -37,5 +38,11 @@ app.use(express.urlencoded({ extended: false }));
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', app: 'fileex-server' });
 });
+
+// ---------------------------------------------------------------------------
+// API Routes — v1
+// Each module is mounted as it is implemented.
+// ---------------------------------------------------------------------------
+app.use('/api/v1/auth', authRoutes);
 
 export default app;
