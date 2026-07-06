@@ -15,4 +15,7 @@ const router = Router();
 // GET /api/v1/auth — module health check
 router.get('/', authController.getModuleStatus);
 
+// POST /api/v1/auth/register — create a new user account
+router.post('/register', authController.register);
+
 export default router;

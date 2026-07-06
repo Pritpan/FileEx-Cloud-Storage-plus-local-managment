@@ -24,11 +24,35 @@ export const getModuleStatus = async () => {
   };
 };
 
+/**
+ * register(userData)
+ *
+ * Receives validated data from the controller.
+ *
+ * Current: skeleton — returns the data to confirm the flow works end-to-end.
+ *
+ * Next chunk will:
+ *   1. Check authRepository.findUserByEmail — reject if duplicate
+ *   2. bcrypt.hash(password) — never store plaintext
+ *   3. authRepository.createUser — insert row + init StorageStats
+ *   4. Return sanitised user object (no hashedPassword)
+ */
+export const register = async (userData) => {
+  // TODO (next chunk): check for duplicate email
+  // TODO (next chunk): hash password with bcrypt
+  // TODO (next chunk): persist via authRepository.createUser()
+
+  return {
+    success: true,
+    message: 'Register flow working.',
+    data: userData,
+  };
+};
+
 // ---------------------------------------------------------------------------
-// Future methods — added in subsequent chunks:
+// Pending methods:
 //
-// export const register = async ({ firstName, lastName, email, password }) => { ... };
-// export const login    = async ({ email, password }) => { ... };
-// export const refresh  = async (refreshToken) => { ... };
-// export const logout   = async (refreshToken) => { ... };
+// export const login   = async ({ email, password }) => { ... };
+// export const refresh = async (refreshToken) => { ... };
+// export const logout  = async (refreshToken) => { ... };
 // ---------------------------------------------------------------------------
