@@ -4,18 +4,23 @@
 // Responsibility: Business logic for the auth module.
 //
 // Services orchestrate:
-//   - Validation (via validators, added later)
-//   - Repository calls (DB access, added later)
-//   - Side effects (notifications, activity logs, added later)
+//   - Password hashing (bcrypt)
+//   - Repository calls (DB access)
+//   - Side effects (notifications, activity logs — added in later chunks)
 //
 // Services never touch req or res.
 // =============================================================================
 
+import bcrypt from 'bcrypt';
 import * as authRepository from './auth.repository.js';
+
+// bcrypt cost factor — 10 rounds is the industry standard balance between
+// security and performance (~100ms per hash on modern hardware).
+// Higher = slower to brute-force, but also slower per legitimate login.
+const SALT_ROUNDS = 10;
 
 /**
  * Returns module status.
- * Placeholder until real auth logic (register, login) is implemented.
  */
 export const getModuleStatus = async () => {
   return {
@@ -25,22 +30,25 @@ export const getModuleStatus = async () => {
 };
 
 /**
-/**
  * register({ name, email, password })
  *
- * Orchestrates user registration.
- *
- * ⚠️  TEMPORARY: password is passed directly as hashedPassword.
- *     This will be replaced with bcrypt.hash() in the next chunk.
+ * Orchestrates user registration:
+ *   1. Hash the plain-text password with bcrypt.
+ *   2. Persist the user via the repository.
+ *   3. Return a sanitised user object (hashedPassword excluded).
  *
  * TODO (next chunk): check authRepository.findUserByEmail — reject if duplicate
- * TODO (next chunk): replace `password` with `await bcrypt.hash(password, 12)`
  */
 export const register = async ({ name, email, password }) => {
+  // Hash the password before it touches the database.
+  // bcrypt.hash() internally generates a random salt and embeds it in the hash —
+  // no need to store the salt separately.
+  const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+
   const user = await authRepository.createUser({
     name,
     email,
-    hashedPassword: password,  // ⚠️ TEMPORARY — plain text, replace with bcrypt
+    hashedPassword,
     avatarUrl: null,
   });
 
