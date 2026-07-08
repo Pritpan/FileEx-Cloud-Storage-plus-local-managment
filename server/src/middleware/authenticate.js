@@ -47,8 +47,15 @@ const authenticate = async (req, res, next) => {
     });
   }
 
-  // Confirm the user still exists in the database
-  const user = await authRepository.findUserById(payload.sub);
+  // FIX: Wrapped DB lookup in try/catch so database errors are forwarded to
+  // Express's error handler instead of hanging the request.
+  let user;
+  try {
+    user = await authRepository.findUserById(payload.sub);
+  } catch (err) {
+    return next(err);
+  }
+
   if (!user) {
     return res.status(401).json({
       success: false,

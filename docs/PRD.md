@@ -270,8 +270,8 @@ Fileex includes an in-app notification system that surfaces feedback for all asy
 ### 5.14 File & Folder Naming Rules *(New)*
 
 #### Uniqueness Enforcement
-- Within the same folder, **no two files may have the same name**
-- Within the same folder, **no two folders may have the same name**
+- Within the same folder, **no two items (files or folders) may have the same name**
+- Files and folders share the same namespace, enforced by a unique constraint on `(ownerId, parentId, displayName)`
 - The uniqueness check is **case-insensitive** (`Resume.pdf` and `resume.pdf` are considered the same)
 - When violated, the API returns **HTTP 409 Conflict**
 

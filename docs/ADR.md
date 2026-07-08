@@ -317,6 +317,44 @@ Should we create a monorepo with a `shared/` package for common code, or keep th
 
 ---
 
+## ADR-009 — Single File Table & Immutable Storage Keys
+
+**Status:** Accepted  
+**Date:** 2026-07-08  
+**Deciders:** Architecture Team
+
+### Context
+Fileex needs to store hierarchical folders and files. S3 acts purely as a byte store and does not inherently understand folders (it only has prefixes). Our previous schema considered separating files and folders into distinct tables. Additionally, we need to handle file renaming and movement without triggering expensive S3 operations.
+
+### Problem
+How do we model the file/folder hierarchy efficiently in MySQL while keeping S3 operations minimal and preventing synchronization issues between the database and the object store?
+
+### Alternatives Considered
+
+| Option | Pros | Cons |
+|---|---|---|
+| **Separate Tables (files & folders)** | Strict schema typing for files vs folders | Complex queries for breadcrumbs and mixed listings, duplicative logic |
+| **Single Table (chosen)** | Simplified queries, uniform hierarchy management, recursive CTEs work seamlessly | Requires `type` enum and nullable fields (e.g., `storageKey` for folders) |
+| **Mutable S3 Keys** | S3 keys match user-visible paths exactly | Renaming a folder requires moving potentially thousands of S3 objects, resulting in massive API calls and costs |
+| **Immutable S3 Keys (chosen)** | Moving/renaming is instant (O(1) DB update) | S3 buckets look "messy" (UUIDs instead of paths) if viewed directly outside the app |
+
+### Decision
+**Single File Table with Immutable Storage Keys.**
+
+- **Unified Schema:** We will use ONE `File` table for both files and folders. Folders are simply metadata entries where `type = FOLDER`, `storageKey = NULL`, and `size = 0`. The hierarchy is managed via a self-referencing `parentId`.
+- **Immutable Storage Keys:** The `storageKey` assigned during upload (e.g., `users/{userId}/files/{uuid}`) is completely decoupled from the user-visible `displayName`. The `storageKey` NEVER changes after creation.
+- **Instant Operations:** Moving or renaming files/folders only updates the `parentId` or `displayName` in MySQL. No S3 operations are performed.
+- **Upload Recovery:** The upload flow creates a `PENDING` record. A recovery strategy verifies object existence in S3 and marks it `READY`, updating `usedStorage` in `StorageStats` only once.
+- **Metadata vs Bytes:** MySQL strictly owns all metadata and hierarchy. S3 purely stores bytes.
+
+### Consequences
+- **Positive:** Renaming or moving large folders is instantaneous (a single DB update).
+- **Positive:** Queries for directory listings are uniform and simple.
+- **Positive:** Presigned URL uploads work cleanly with immutable UUID keys.
+- **Negative:** Folders do not exist in S3; browsing the raw S3 bucket without the database is meaningless.
+
+---
+
 ## ADR Index
 
 | ID | Decision | Status |
@@ -329,3 +367,4 @@ Should we create a monorepo with a `shared/` package for common code, or keep th
 | ADR-006 | Soft delete over hard delete | Accepted |
 | ADR-007 | Two-phase presigned URL upload | Accepted |
 | ADR-008 | Independent Applications (No Shared Packages) | Accepted |
+| ADR-009 | Single File Table & Immutable Storage Keys | Accepted |

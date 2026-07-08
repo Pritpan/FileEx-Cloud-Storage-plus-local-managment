@@ -8,10 +8,11 @@
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import prisma from '../../config/prisma.js';
 import * as authRepository from './auth.repository.js';
 
 const SALT_ROUNDS = 10;
-const ACCESS_TOKEN_EXPIRY  = '15m';
+const ACCESS_TOKEN_EXPIRY = '15m';
 const REFRESH_TOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
 // ---------------------------------------------------------------------------
@@ -38,12 +39,21 @@ const createServiceError = (message, statusCode, code) => {
 };
 
 // ---------------------------------------------------------------------------
-// getModuleStatus
+// generateTokenPair — shared token generation logic used by login & refresh.
 // ---------------------------------------------------------------------------
-export const getModuleStatus = async () => ({
-  success: true,
-  message: 'Authentication module is ready.',
-});
+const generateTokenPair = (user) => {
+  const accessToken = jwt.sign(
+    { sub: user.id, email: user.email },
+    process.env.JWT_ACCESS_SECRET,
+    { expiresIn: ACCESS_TOKEN_EXPIRY },
+  );
+
+  const rawRefreshToken = crypto.randomBytes(64).toString('hex');
+  const tokenHash = hashToken(rawRefreshToken);
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS);
+
+  return { accessToken, rawRefreshToken, tokenHash, expiresAt };
+};
 
 // ---------------------------------------------------------------------------
 // register
@@ -91,17 +101,7 @@ export const login = async ({ email, password }) => {
     throw createServiceError('Invalid email or password.', 401, 'INVALID_CREDENTIALS');
   }
 
-  // Access token — short-lived JWT, stored in memory on the client.
-  const accessToken = jwt.sign(
-    { sub: user.id, email: user.email },
-    process.env.JWT_ACCESS_SECRET,
-    { expiresIn: ACCESS_TOKEN_EXPIRY },
-  );
-
-  // Refresh token — cryptographically random, stored as a hash in the DB.
-  const rawRefreshToken = crypto.randomBytes(64).toString('hex');
-  const tokenHash = hashToken(rawRefreshToken);
-  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS);
+  const { accessToken, rawRefreshToken, tokenHash, expiresAt } = generateTokenPair(user);
 
   await authRepository.saveRefreshToken({ userId: user.id, tokenHash, expiresAt });
 
@@ -110,7 +110,53 @@ export const login = async ({ email, password }) => {
     data: {
       user: sanitiseUser(user),
       accessToken,
-      refreshToken: rawRefreshToken, // client stores this securely (HTTP-only cookie in production)
+      refreshToken: rawRefreshToken,
+    },
+  };
+};
+
+// ---------------------------------------------------------------------------
+// refresh
+//
+// FIX-1: Now checks isRevoked in addition to expiry.
+// FIX-2: Token rotation (delete old + save new) is now a single atomic
+//        Prisma $transaction to prevent session loss on mid-rotation crash.
+// ---------------------------------------------------------------------------
+export const refresh = async (rawRefreshToken) => {
+  const tokenHash = hashToken(rawRefreshToken);
+  const storedToken = await authRepository.findRefreshToken(tokenHash);
+
+  if (!storedToken) {
+    throw createServiceError('Invalid refresh token.', 401, 'INVALID_TOKEN');
+  }
+
+  // Check both revocation status and expiry
+  if (storedToken.isRevoked || new Date() > storedToken.expiresAt) {
+    // Clean up the stale/revoked token
+    await authRepository.deleteRefreshToken(tokenHash);
+    throw createServiceError('Refresh token is invalid or has expired.', 401, 'EXPIRED_TOKEN');
+  }
+
+  const user = await authRepository.findUserById(storedToken.userId);
+  if (!user) {
+    await authRepository.deleteRefreshToken(tokenHash);
+    throw createServiceError('User no longer exists.', 401, 'UNAUTHORIZED');
+  }
+
+  const { accessToken, rawRefreshToken: newRawRefreshToken, tokenHash: newTokenHash, expiresAt } = generateTokenPair(user);
+
+  // Atomic rotation: delete old token and save new token in a single transaction.
+  // If either operation fails, both are rolled back — no session loss.
+  await prisma.$transaction([
+    prisma.refreshToken.delete({ where: { tokenHash } }),
+    prisma.refreshToken.create({ data: { userId: user.id, tokenHash: newTokenHash, expiresAt } }),
+  ]);
+
+  return {
+    success: true,
+    data: {
+      accessToken,
+      refreshToken: newRawRefreshToken,
     },
   };
 };

@@ -6,7 +6,7 @@
 // =============================================================================
 
 import * as authService from './auth.service.js';
-import { RegisterSchema, LoginSchema } from './auth.schema.js';
+import { RegisterSchema, LoginSchema, RefreshSchema } from './auth.schema.js';
 
 // ---------------------------------------------------------------------------
 // Reusable: parse a Zod schema against req.body and return the result.
@@ -49,14 +49,6 @@ const handleService = async (res, fn) => {
 };
 
 // ---------------------------------------------------------------------------
-// GET /api/v1/auth
-// ---------------------------------------------------------------------------
-export const getModuleStatus = async (_req, res) => {
-  const result = await authService.getModuleStatus();
-  res.json(result);
-};
-
-// ---------------------------------------------------------------------------
 // POST /api/v1/auth/register
 // ---------------------------------------------------------------------------
 export const register = async (req, res) => {
@@ -75,6 +67,17 @@ export const login = async (req, res) => {
   if (!ok) return res.status(400).json(response);
 
   const result = await handleService(res, () => authService.login(data));
+  if (result) res.status(200).json(result);
+};
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/auth/refresh
+// ---------------------------------------------------------------------------
+export const refresh = async (req, res) => {
+  const { ok, data, response } = validate(RefreshSchema, req.body);
+  if (!ok) return res.status(400).json(response);
+
+  const result = await handleService(res, () => authService.refresh(data.refreshToken));
   if (result) res.status(200).json(result);
 };
 

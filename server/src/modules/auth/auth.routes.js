@@ -12,12 +12,12 @@ import authenticate from '../../middleware/authenticate.js';
 const router = Router();
 
 // Public routes — no token required
-router.get ('/',          authController.getModuleStatus);
-router.post('/register',  authController.register);
-router.post('/login',     authController.login);
-router.post('/logout',    authController.logout);
+router.post('/register', authController.register);
+router.post('/login',    authController.login);
+router.post('/refresh',  authController.refresh);
+router.post('/logout',   authController.logout);
 
 // Protected routes — valid access token required
-router.get ('/me',        authenticate, authController.getMe);
+router.get('/me', authenticate, authController.getMe);
 
 export default router;

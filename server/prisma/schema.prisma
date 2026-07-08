@@ -10,13 +10,15 @@
 //   ✅ RefreshToken  — Chunk 3.2 (auth)
 //
 // Pending models:
-//   ⬜ StorageStats  — future chunk
-//   ⬜ Folder        — Chunk 4.1
-//   ⬜ File          — Chunk 4.2
+//   ⬜ File          — Chunk 4.1 (unified file + folder table, see DATABASE_DESIGN.md §3.3)
+//   ⬜ StorageStats  — Chunk 4.2
 //   ⬜ TrashItem     — Chunk 5.1
 //   ⬜ ActivityLog   — Chunk 5.2
 //   ⬜ Notification  — Chunk 6.1
 //   ⬜ UserSettings  — Chunk 6.2
+//
+// Note: There is NO separate Folder model. Folders are entries in the File
+// table with type = FOLDER. See ADR-009 for the rationale.
 // =============================================================================
 
 generator client {

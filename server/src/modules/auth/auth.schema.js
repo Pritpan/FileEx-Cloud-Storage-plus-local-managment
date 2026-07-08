@@ -40,3 +40,12 @@ export const LoginSchema = z.object({
     .string({ required_error: 'Password is required.' })
     .min(1, 'Password is required.'),
 });
+
+// -----------------------------------------------------------------------------
+// RefreshSchema — POST /api/v1/auth/refresh
+// -----------------------------------------------------------------------------
+export const RefreshSchema = z.object({
+  refreshToken: z
+    .string({ required_error: 'Refresh token is required.' })
+    .min(1, 'Refresh token is required.'),
+});

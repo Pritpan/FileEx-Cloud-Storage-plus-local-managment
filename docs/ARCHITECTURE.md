@@ -267,14 +267,13 @@ Adding a new preview type = adding one entry to the registry. Existing code is n
 ### 4.1 Layered Pattern
 
 ```
-Request → Router → Controller → Service → Repository → Prisma → MySQL
-                                   ↓
-                               S3 Client (file ops)
-                               NotificationService (side effects)
-                               ActivityService (side effects)
+Request → Route → Controller → Service → Repository → Prisma → MySQL
 ```
 
-**Rule:** Business logic lives exclusively in Services. Controllers only parse requests and format responses. Repositories encapsulate all Prisma queries.
+**Strict Architectural Rules:**
+- **Controllers** contain HTTP logic only (req/res parsing, calling services). No business logic.
+- **Services** contain all business logic.
+- **Repositories** are the ONLY layer allowed to use Prisma. No Prisma outside repositories.
 
 ### 4.2 Backend Folder Structure
 
@@ -422,26 +421,48 @@ Renderer Process (React UI)
 
 ---
 
-## 6. S3 Integration Strategy
+## 6. Storage & S3 Integration Strategy
 
 ### 6.1 Two-Phase Upload Flow
 
+Storage implementation remains provider-agnostic, enabling MinIO to replace S3 for local development without changing business logic.
+
+```text
+User selects file
+       ↓
+POST /upload/initiate
+       ↓
+Validate quota
+       ↓
+Generate immutable storageKey
+       ↓
+Create File record (status = PENDING)
+       ↓
+Generate Presigned Upload URL
+       ↓
+Client uploads directly to S3
+       ↓
+POST /upload/complete
+       ↓
+Verify object exists in S3
+       ↓
+status = READY
+       ↓
+Update StorageStats.usedStorage
 ```
-Client                  Backend                  S3
-  │                        │                      │
-  ├─ POST /files/upload-url ►                     │
-  │  { name, size, type, folderId }               │
-  │  [validates: quota, MIME, name conflict]       │
-  │                        ├─ generatePresignedPutUrl ─►
-  │  ◄─ { uploadUrl, fileId } ◄─┤                 │
-  │                        │                      │
-  ├────────────────── PUT (file blob) ───────────►│
-  │      (direct client → S3, backend not involved)
-  │                        │                      │
-  ├─ POST /files/:id/confirm ►                    │
-  │  [update status, storageStats, notification]  │
-  │  ◄─ { file metadata } ◄─┤                    │
-```
+
+### 6.2 Upload Recovery
+
+Whenever files are listed (e.g. GET /files):
+If `PENDING` files exist:
+1. For each `PENDING` file, verify object existence in S3.
+2. If object exists:
+   - `status = READY`
+   - Update `usedStorage` (only once)
+3. If object does not exist:
+   - `status = FAILED`
+
+No background cleanup worker is used for MVP. The `uploadStartedAt` timestamp exists for future cleanup strategies.
 
 ### 6.2 Download / Preview Flow
 

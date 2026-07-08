@@ -20,7 +20,6 @@
 ```mermaid
 erDiagram
     users ||--o{ files : "owns"
-    users ||--o{ folders : "owns"
     users ||--o{ refreshTokens : "has"
     users ||--o{ activityLogs : "generates"
     users ||--o{ favorites : "marks"
@@ -28,15 +27,14 @@ erDiagram
     users ||--|| storageStats : "has"
     users ||--|| userSettings : "has"
 
-    folders ||--o{ folders : "parentOf"
-    folders ||--o{ files : "contains"
+    files ||--o{ files : "parentOf"
 
     files ||--o{ fileVersions : "has"
     files ||--o{ favorites : "marked in"
     files ||--o{ trashItems : "sent to"
     files ||--o{ shareLinks : "shared via"
 
-    folders ||--o{ trashItems : "sent to"
+
 ```
 
 ---
@@ -77,63 +75,31 @@ erDiagram
 
 ---
 
-### 3.3 `folders`
+### 3.3 `files` (Unified File & Folder Model)
+
+Updated in v1.3: Unified File and Folder tables into a single `files` table.
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
-| id | VARCHAR(36) | PK | UUID v4 |
-| userId | VARCHAR(36) | FK → users.id | Owner |
-| parentId | VARCHAR(36) | FK → folders.id, NULLABLE | NULL = root |
-| name | VARCHAR(255) | NOT NULL | |
-| color | VARCHAR(7) | NULLABLE | Hex color |
-| deletedAt | DATETIME | NULLABLE | Soft delete |
+| id | INT | PK, AUTO_INCREMENT | |
+| ownerId | VARCHAR(36) | FK → users.id | Owner of the item |
+| parentId | INT | FK → files.id, NULLABLE | Self-referencing (NULL = root) |
+| displayName | VARCHAR(255) | NOT NULL | User-visible name |
+| storageKey | VARCHAR(1000) | NULLABLE | Immutable S3 object key (null for folders) |
+| mimeType | VARCHAR(127) | NULLABLE | e.g. `application/pdf` (null for folders) |
+| size | BIGINT | NOT NULL | File size in bytes (0 for folders) |
+| type | ENUM | NOT NULL | `FILE` or `FOLDER` |
+| status | ENUM | NOT NULL | `PENDING`, `READY`, `FAILED`, `DELETED` |
+| uploadStartedAt | DATETIME | NULLABLE | For future cleanup strategies |
 | createdAt | DATETIME | DEFAULT NOW() | |
 | updatedAt | DATETIME | AUTO UPDATE | |
 
-**Indexes:** `userId`, `parentId`, `(userId, parentId)` composite  
-**Unique Constraint:** `(userId, parentId, name)` — case-insensitive enforced at service layer
+**Indexes:** `ownerId`, `parentId`, `status`  
+**Unique Constraint:** `@@unique([ownerId, parentId, displayName])` — prevents duplicate names in the same folder.
 
----
-
-### 3.4 `files`
-
-Updated in v1.3: Added `lastAccessedAt` and `checksum` fields.
-
-| Column | Type | Constraints | Notes |
-|---|---|---|---|
-| id | VARCHAR(36) | PK | UUID v4 |
-| userId | VARCHAR(36) | FK → users.id | Owner |
-| folderId | VARCHAR(36) | FK → folders.id, NULLABLE | NULL = root |
-| name | VARCHAR(255) | NOT NULL | Display name |
-| originalName | VARCHAR(255) | NOT NULL | Name at upload time |
-| s3Key | VARCHAR(1000) | NOT NULL | Full S3 object key |
-| mimeType | VARCHAR(127) | NOT NULL | e.g. `image/jpeg` |
-| extension | VARCHAR(20) | NOT NULL | e.g. `jpg` |
-| sizeBytes | BIGINT | NOT NULL | File size in bytes |
-| uploadStatus | ENUM | NOT NULL | `pending`, `confirmed`, `failed` |
-| isFavorited | BOOLEAN | DEFAULT FALSE | Denormalized fast read |
-| **lastAccessedAt** | DATETIME | NULLABLE | *(new — see note below)* |
-| **checksum** | VARCHAR(64) | NULLABLE | *(new — see note below)* |
-| deletedAt | DATETIME | NULLABLE | Soft delete |
-| createdAt | DATETIME | DEFAULT NOW() | |
-| updatedAt | DATETIME | AUTO UPDATE | |
-
-**Indexes:** `userId`, `folderId`, `(userId, folderId)` composite, `uploadStatus`, `mimeType`, `deletedAt`  
-**Unique Constraint:** `(userId, folderId, name)` — case-insensitive enforced at service layer
-
-#### Why `lastAccessedAt`?
-- Tracks the most recent time a user downloaded or previewed the file
-- Enables "Recently Accessed" views (common in file managers like Finder / Explorer)
-- Useful for future analytics and smart sorting ("Last Opened")
-- Updated on `GET /files/:id/download-url` and `GET /files/:id/preview-url`
-- Nullable — null means the file was uploaded but never accessed
-
-#### Why `checksum`?
-- Stores the SHA-256 hash of the file content, computed at upload confirmation
-- **Integrity verification:** Allows the system to detect if an S3 object was corrupted or tampered with
-- **Duplicate detection (future):** Enables server-side deduplication — if two files have the same checksum, they can share the same S3 object (single-instance storage)
-- **Client-side pre-check (future):** Client can compute checksum before uploading; if it matches an existing file, skip the upload entirely
-- Nullable in v1 because checksum computation is done async post-confirmation; not computed for legacy/existing files
+#### Enums
+**FileType:** `FILE`, `FOLDER`
+**FileStatus:** `PENDING`, `READY`, `FAILED`, `DELETED` (DELETED reserved for future soft-delete support)
 
 ---
 
@@ -207,14 +173,11 @@ Updated in v1.3: Added `lastAccessedAt` and `checksum` fields.
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
-| userId | VARCHAR(36) | PK, FK → users.id | |
-| usedBytes | BIGINT | DEFAULT 0 | Total used |
-| imageBytes | BIGINT | DEFAULT 0 | |
-| videoBytes | BIGINT | DEFAULT 0 | |
-| audioBytes | BIGINT | DEFAULT 0 | |
-| documentBytes | BIGINT | DEFAULT 0 | |
-| otherBytes | BIGINT | DEFAULT 0 | |
-| fileCount | INT | DEFAULT 0 | |
+| id | VARCHAR(36) | PK | UUID v4 |
+| userId | VARCHAR(36) | UNIQUE, FK → users.id | |
+| usedStorage | BIGINT | DEFAULT 0 | Updated only after upload verification |
+| storageLimit | BIGINT | DEFAULT 5368709120 | Quota is validated using this |
+| createdAt | DATETIME | DEFAULT NOW() | |
 | updatedAt | DATETIME | AUTO UPDATE | |
 
 ---
@@ -328,11 +291,41 @@ enum NotificationType {
   error
 }
 
-// Updated File model additions:
+// Unified File and Folder model
 model File {
-  // ... existing fields ...
-  lastAccessedAt DateTime?
-  checksum       String?   // SHA-256, max 64 chars
+  id              Int        @id @default(autoincrement())
+  ownerId         String
+  parentId        Int?
+  displayName     String
+  storageKey      String?
+  mimeType        String?
+  size            BigInt
+  type            FileType
+  status          FileStatus
+  uploadStartedAt DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  owner           User       @relation(fields: [ownerId], references: [id])
+  parent          File?      @relation("FileHierarchy", fields: [parentId], references: [id])
+  children        File[]     @relation("FileHierarchy")
+
+  @@index([ownerId])
+  @@index([parentId])
+  @@index([status])
+  @@unique([ownerId, parentId, displayName])
+}
+
+enum FileType {
+  FILE
+  FOLDER
+}
+
+enum FileStatus {
+  PENDING
+  READY
+  FAILED
+  DELETED
 }
 ```
 

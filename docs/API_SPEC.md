@@ -98,28 +98,33 @@ Get current user profile.
 
 ## Module 2 — Files
 
-### `POST /files/upload-url` 🔒
-Phase 1: Request presigned S3 PUT URL.
+### `POST /upload/initiate` 🔒
+Phase 1: Request presigned S3 PUT URL. Creates a File record with `status = PENDING`.
 
 **Body:**
 ```json
-{ "name": "document.pdf", "mimeType": "application/pdf", "sizeBytes": 2048576, "folderId": "uuid-or-null" }
+{ "displayName": "document.pdf", "mimeType": "application/pdf", "size": 2048576, "parentId": null }
 ```
 
 **Validation performed server-side:**
-- `sizeBytes` must not cause `storageStats.usedBytes` to exceed `users.storageQuotaBytes` → `413 QUOTA_EXCEEDED`
+- `size` must not cause storage quota to be exceeded → `413 QUOTA_EXCEEDED`
 - `mimeType` must be in allowed list → `400 VALIDATION_ERROR`
-- `name` must not conflict with existing file in target folder → `409 NAME_CONFLICT`
+- `displayName` must not conflict with existing item in target folder → `409 NAME_CONFLICT`
 
 **Response `201`:**
 ```json
-{ "fileId": "uuid", "uploadUrl": "https://s3.amazonaws.com/...", "expiresAt": "..." }
+{ "fileId": 123, "uploadUrl": "https://s3.amazonaws.com/..." }
 ```
 
 ---
 
-### `POST /files/:id/confirm` 🔒
-Phase 2: Confirm upload completed. Updates `uploadStatus → confirmed`, updates `storageStats`, creates `notifications` record (type: `upload_complete`).  
+### `POST /upload/complete` 🔒
+Phase 2: Confirm upload completed. Backend verifies object exists in S3, updates `status = READY`, updates `StorageStats.usedStorage`, creates `notifications` record (type: `upload_complete`).  
+
+**Body:**
+```json
+{ "fileId": 123 }
+```
 **Response `200`:** Complete file object.
 
 ---
@@ -490,38 +495,26 @@ Access shared file.
 
 ---
 
-## Appendix A — File Object Schema
+## Appendix A — Unified File Object Schema
 
 ```json
 {
-  "id": "uuid",
-  "name": "document.pdf",
-  "originalName": "document.pdf",
+  "id": 1,
+  "ownerId": "uuid",
+  "parentId": null,
+  "displayName": "document.pdf",
+  "storageKey": "users/uuid/files/uuid",
   "mimeType": "application/pdf",
-  "extension": "pdf",
-  "sizeBytes": 2048576,
-  "folderId": "uuid-or-null",
-  "isFavorited": false,
-  "uploadStatus": "confirmed",
-  "lastAccessedAt": "2026-06-30T17:00:00Z",
-  "checksum": "sha256hexstring",
+  "size": 2048576,
+  "type": "FILE",
+  "status": "READY",
+  "uploadStartedAt": "2026-06-29T17:55:00Z",
   "createdAt": "2026-06-29T18:00:00Z",
   "updatedAt": "2026-06-29T18:00:00Z"
 }
 ```
 
-## Appendix B — Folder Object Schema
-
-```json
-{
-  "id": "uuid",
-  "name": "My Projects",
-  "parentId": "uuid-or-null",
-  "color": "#6366f1",
-  "createdAt": "2026-06-29T18:00:00Z",
-  "updatedAt": "2026-06-29T18:00:00Z"
-}
-```
+*Note: For folders, `storageKey` is null, `mimeType` is null, `size` is 0, and `type` is FOLDER.*
 
 ## Appendix C — Naming Conflict Rules Summary
 
