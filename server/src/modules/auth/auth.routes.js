@@ -1,21 +1,23 @@
 // =============================================================================
 // auth.routes.js
 //
-// Responsibility: Define routes only.
-// No business logic lives here. Every route delegates to the controller.
-//
+// Responsibility: Route definitions only.
 // Mounted at: /api/v1/auth  (registered in app.js)
 // =============================================================================
 
 import { Router } from 'express';
 import * as authController from './auth.controller.js';
+import authenticate from '../../middleware/authenticate.js';
 
 const router = Router();
 
-// GET /api/v1/auth — module health check
-router.get('/', authController.getModuleStatus);
+// Public routes — no token required
+router.get ('/',          authController.getModuleStatus);
+router.post('/register',  authController.register);
+router.post('/login',     authController.login);
+router.post('/logout',    authController.logout);
 
-// POST /api/v1/auth/register — create a new user account
-router.post('/register', authController.register);
+// Protected routes — valid access token required
+router.get ('/me',        authenticate, authController.getMe);
 
 export default router;

@@ -7,10 +7,10 @@
 //
 // Current models:
 //   ✅ User          — Chunk 3.1
+//   ✅ RefreshToken  — Chunk 3.2 (auth)
 //
 // Pending models:
-//   ⬜ RefreshToken  — Chunk 3.2 (auth)
-//   ⬜ StorageStats  — Chunk 3.2 (auth)
+//   ⬜ StorageStats  — future chunk
 //   ⬜ Folder        — Chunk 4.1
 //   ⬜ File          — Chunk 4.2
 //   ⬜ TrashItem     — Chunk 5.1
@@ -30,38 +30,19 @@ datasource db {
 
 // =============================================================================
 // User
-//
-// The central entity. Every file, folder, and activity belongs to a User.
 // See: docs/DATABASE_DESIGN.md §3.1
 // =============================================================================
 model User {
-  // Primary key — CUID is URL-safe, collision-resistant, and sortable.
-  // Preferred over UUID for application-generated IDs.
   id             String   @id @default(cuid())
-
-  // Display name for the user's profile.
-  name           String @db.VarChar(100)
-
-  // Login identifier. Unique across all users. Indexed automatically by Prisma.
+  name           String   @db.VarChar(100)
   email          String   @unique @db.VarChar(255)
-
-  // bcrypt hash of the user's password. The raw password is NEVER stored.
   hashedPassword String
-
-  // S3 URL for the user's profile picture. Null until the user uploads one.
   avatarUrl      String?
-
-  // Automatically set to the current timestamp when the row is inserted.
   createdAt      DateTime @default(now())
-
-  // Automatically updated by Prisma on every write to this row.
   updatedAt      DateTime @updatedAt
 
-  // ---------------------------------------------------------------------------
-  // Relations — added as each feature module is implemented.
-  // Uncomment each line when its corresponding model is added to this schema.
-  // ---------------------------------------------------------------------------
-  // refreshTokens  RefreshToken[]
+  // Relations
+  refreshTokens  RefreshToken[]
   // storageStats   StorageStats?
   // folders        Folder[]
   // files          File[]
@@ -70,4 +51,26 @@ model User {
   // activityLogs   ActivityLog[]
 
   @@map("users")
+}
+
+// =============================================================================
+// RefreshToken
+//
+// Stores hashed refresh tokens for the dual-token auth strategy.
+// The raw token is returned to the client; only the SHA-256 hash is persisted.
+// onDelete: Cascade ensures tokens are cleaned up when a user is deleted.
+// See: docs/DATABASE_DESIGN.md §3.2
+// =============================================================================
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique @db.VarChar(64)
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
 }

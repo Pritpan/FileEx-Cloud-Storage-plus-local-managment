@@ -1,63 +1,70 @@
 // =============================================================================
 // auth.repository.js
 //
-// Responsibility: All database access for the auth module.
-//
-// Repositories are the ONLY layer that talks to Prisma.
-// Services call repositories — services never import Prisma directly.
-//
-// Rule: One repository per module. No cross-module repository imports.
-// See: docs/DATABASE_DESIGN.md — User, RefreshToken, StorageStats models.
+// Responsibility: ALL database access for the auth module.
+// Repositories are the ONLY layer that imports Prisma.
+// Services call repositories — never import Prisma directly in a service.
 // =============================================================================
 
 import prisma from '../../config/prisma.js';
 
 // ---------------------------------------------------------------------------
+// findUserByEmail
+// Used by: register (duplicate check), login (credential lookup)
+// ---------------------------------------------------------------------------
+export const findUserByEmail = async (email) => {
+  return prisma.user.findUnique({ where: { email } });
+};
+
+// ---------------------------------------------------------------------------
+// findUserById
+// Used by: authenticate middleware (token payload → user object)
+// ---------------------------------------------------------------------------
+export const findUserById = async (id) => {
+  return prisma.user.findUnique({ where: { id } });
+};
+
+// ---------------------------------------------------------------------------
 // createUser
-//
-// Inserts a new User row into the `users` table.
-//
-// @param {object} userData
-// @param {string} userData.name
-// @param {string} userData.email          - already lowercased by RegisterSchema
-// @param {string} userData.hashedPassword - bcrypt hash (plain text in this chunk — temporary)
-// @param {string|null} [userData.avatarUrl]
-//
-// @returns {Promise<User>} The created Prisma User object.
-//
-// Note: No duplicate email check here.
-//       That guard lives in the service layer (added in the next chunk).
-//       The DB unique constraint on `email` is the final safety net.
+// Used by: register service
 // ---------------------------------------------------------------------------
 export const createUser = async ({ name, email, hashedPassword, avatarUrl = null }) => {
   return prisma.user.create({
-    data: {
-      name,
-      email,
-      hashedPassword,
-      avatarUrl,
-    },
+    data: { name, email, hashedPassword, avatarUrl },
   });
 };
 
 // ---------------------------------------------------------------------------
-// Pending methods — implemented as auth features are built:
-//
-// findUserByEmail(email)
-//   → prisma.user.findUnique({ where: { email } })
-//
-// findUserById(id)
-//   → prisma.user.findUnique({ where: { id } })
-//
-// saveRefreshToken({ userId, tokenHash, expiresAt })
-//   → prisma.refreshToken.create(...)
-//
-// findRefreshToken(tokenHash)
-//   → prisma.refreshToken.findUnique({ where: { tokenHash } })
-//
-// deleteRefreshToken(tokenHash)
-//   → prisma.refreshToken.delete({ where: { tokenHash } })
-//
-// deleteAllRefreshTokens(userId)
-//   → prisma.refreshToken.deleteMany({ where: { userId } })
+// saveRefreshToken
+// Stores a SHA-256 hash of the raw refresh token.
+// The raw token is NEVER persisted — only its hash.
 // ---------------------------------------------------------------------------
+export const saveRefreshToken = async ({ userId, tokenHash, expiresAt }) => {
+  return prisma.refreshToken.create({
+    data: { userId, tokenHash, expiresAt },
+  });
+};
+
+// ---------------------------------------------------------------------------
+// findRefreshToken
+// Used by: logout (verify token exists before deleting)
+// ---------------------------------------------------------------------------
+export const findRefreshToken = async (tokenHash) => {
+  return prisma.refreshToken.findUnique({ where: { tokenHash } });
+};
+
+// ---------------------------------------------------------------------------
+// deleteRefreshToken
+// Used by: logout (invalidate one session)
+// ---------------------------------------------------------------------------
+export const deleteRefreshToken = async (tokenHash) => {
+  return prisma.refreshToken.delete({ where: { tokenHash } });
+};
+
+// ---------------------------------------------------------------------------
+// deleteAllRefreshTokens
+// Used by: future "logout everywhere" feature
+// ---------------------------------------------------------------------------
+export const deleteAllRefreshTokens = async (userId) => {
+  return prisma.refreshToken.deleteMany({ where: { userId } });
+};
