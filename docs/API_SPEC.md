@@ -1,6 +1,6 @@
 # Fileex — API Specification
 
-**Version:** 1.3 | **Base URL:** `/api/v1` | **Status:** Planning | **Last Updated:** 2026-06-30
+**Version:** 1.4 | **Base URL:** `/api/v1` | **Status:** Finalized | **Last Updated:** 2026-07-08
 
 ---
 
@@ -9,11 +9,37 @@
 ### Request / Response Format
 - All bodies: `application/json`
 - All timestamps: ISO 8601 (`2026-06-29T18:00:00Z`)
-- All IDs: UUID v4 strings
 - File sizes: bytes (integer)
+
+### ID Type Conventions
+
+IDs are **not** uniformly UUID. Each entity uses the type defined in the schema:
+
+| Entity | ID Field | Type | Notes |
+|---|---|---|---|
+| User | `id` | `VARCHAR(36)` | cuid() |
+| RefreshToken | `id` | `VARCHAR(36)` | cuid() |
+| Notification | `id` | `VARCHAR(36)` | UUID v4 |
+| TrashItem | `id` | `VARCHAR(36)` | UUID v4 |
+| ActivityLog | `id` | `VARCHAR(36)` | UUID v4 |
+| Favorite | `id` | `VARCHAR(36)` | UUID v4 |
+| StorageStats | `id` | `VARCHAR(36)` | UUID v4 |
+| ShareLink | `id` | `VARCHAR(36)` | UUID v4 |
+| **File** | `id` | **`INT`** | AUTO_INCREMENT |
+| **Folder** | `id` | **`INT`** | AUTO_INCREMENT (stored in `files` table) |
+
+> File and Folder IDs are integers in all request bodies, path params, query params, and response payloads. Use `123` not `"abc-uuid"` in examples.
 
 ### Authentication
 Protected routes require `Authorization: Bearer <accessToken>` header.
+
+Tokens are delivered in the **response body** for all clients:
+```json
+{ "accessToken": "eyJ...", "refreshToken": "..." }
+```
+
+> **Future Production Enhancement — Web Application:** The Refresh Token will migrate to an HTTP-only Secure SameSite cookie, eliminating the need to send it in the request body.
+> **Future Production Enhancement — Desktop Application:** The Refresh Token will be stored in secure OS credential storage (e.g., keychain). Cookie-based auth is not planned for Electron.
 
 ### Standard Response Envelope
 
@@ -27,7 +53,7 @@ Protected routes require `Authorization: Bearer <accessToken>` header.
 {
   "success": true,
   "data": [ ... ],
-  "pagination": { "page": 1, "limit": 50, "total": 200, "totalPages": 4 }
+  "pagination": { "page": 1, "limit": 50, "total": 200, "totalPages": 4, "hasNext": true, "hasPrevious": false }
 }
 ```
 
@@ -35,22 +61,137 @@ Protected routes require `Authorization: Bearer <accessToken>` header.
 ```json
 {
   "success": false,
-  "error": { "code": "NOT_FOUND", "message": "File not found" }
+  "error": { "code": "FILE_NOT_FOUND", "message": "File not found" }
 }
 ```
 
-### Standard Error Codes
+---
 
-| Code | HTTP Status | Meaning |
+## Standard HTTP Status Codes
+
+| Status | Meaning | Typical Use |
 |---|---|---|
-| VALIDATION_ERROR | 400 | Invalid request body/params |
-| UNAUTHORIZED | 401 | Missing or invalid access token |
-| FORBIDDEN | 403 | Authenticated but no permission |
-| NOT_FOUND | 404 | Resource does not exist |
-| NAME_CONFLICT | 409 | A file/folder with this name exists in this folder |
-| QUOTA_EXCEEDED | 413 | Upload would exceed storage quota |
-| CIRCULAR_REFERENCE | 422 | Move would create a circular folder reference |
-| INTERNAL_ERROR | 500 | Unexpected server error |
+| 200 OK | Request succeeded | GET, PATCH, DELETE (with body) |
+| 201 Created | Resource created | POST (new resource) |
+| 204 No Content | Success, no body | Reserved for future use |
+| 400 Bad Request | Validation failure | Invalid body / query params |
+| 401 Unauthorized | Missing or invalid token | Auth failure |
+| 403 Forbidden | Authenticated, no permission | Ownership violation |
+| 404 Not Found | Resource does not exist | File, folder, trash item |
+| 409 Conflict | Name already exists in folder | Naming conflict |
+| 413 Payload Too Large | Quota exceeded | Upload size check |
+| 422 Unprocessable Entity | Semantic validation failure | Circular folder reference |
+| 429 Too Many Requests | Rate limit exceeded | Auth endpoints |
+| 500 Internal Server Error | Unexpected server error | Unhandled exceptions |
+
+---
+
+## Application Error Codes
+
+All error responses use a `code` string in the `error` object. Codes are grouped by domain.
+
+**Auth**
+| Code | HTTP | Description |
+|---|---|---|
+| `AUTH_INVALID_CREDENTIALS` | 401 | Email or password is incorrect |
+| `AUTH_INVALID_TOKEN` | 401 | Access token is missing, malformed, or expired |
+| `AUTH_REFRESH_TOKEN_INVALID` | 401 | Refresh token is invalid, expired, or revoked |
+| `AUTH_EMAIL_CONFLICT` | 409 | An account with this email already exists |
+
+**Files & Folders**
+| Code | HTTP | Description |
+|---|---|---|
+| `FILE_NOT_FOUND` | 404 | File does not exist or is not owned by the requester |
+| `FOLDER_NOT_FOUND` | 404 | Folder does not exist or is not owned by the requester |
+| `NAME_CONFLICT` | 409 | A file or folder with this name already exists in the target folder |
+| `FORBIDDEN_OPERATION` | 403 | Operation is not permitted (e.g., wrong owner) |
+| `INVALID_MIME_TYPE` | 400 | MIME type is not in the allowed list |
+| `CIRCULAR_REFERENCE` | 422 | Move would create a circular folder reference |
+
+**Upload**
+| Code | HTTP | Description |
+|---|---|---|
+| `UPLOAD_NOT_FOUND` | 404 | No PENDING file record exists for the given `fileId` |
+| `UPLOAD_NOT_COMPLETED` | 422 | S3 object was not found — upload did not complete |
+| `QUOTA_EXCEEDED` | 413 | Upload size would exceed the user's storage quota |
+
+**Trash**
+| Code | HTTP | Description |
+|---|---|---|
+| `TRASH_ITEM_NOT_FOUND` | 404 | Trash item does not exist |
+
+**General**
+| Code | HTTP | Description |
+|---|---|---|
+| `VALIDATION_ERROR` | 400 | Request body or query params failed schema validation |
+| `INTERNAL_ERROR` | 500 | Unexpected server error |
+
+> These codes are the single source of truth. Do not define error codes in individual endpoint sections — reference this table.
+
+---
+
+## Pagination Standard
+
+All paginated endpoints accept and return the same structure.
+
+**Query Parameters:**
+| Param | Type | Default | Max | Description |
+|---|---|---|---|---|
+| `page` | int | 1 | — | Page number (1-indexed) |
+| `limit` | int | 50 | 100 | Items per page |
+
+**Response `pagination` Object:**
+```json
+{
+  "page": 1,
+  "limit": 50,
+  "total": 200,
+  "totalPages": 4,
+  "hasNext": true,
+  "hasPrevious": false
+}
+```
+
+---
+
+## Sorting Standard
+
+All listing endpoints that support sorting accept the same query parameters.
+
+| Param | Type | Default | Description |
+|---|---|---|---|
+| `sortBy` | string | `name` | Field to sort by |
+| `sortDir` | string | `asc` | Sort direction |
+
+**Supported `sortBy` values:** `name`, `createdAt`, `updatedAt`, `size`, `type`
+
+**Supported `sortDir` values:** `asc`, `desc`
+
+---
+
+## Repository Filter Rule
+
+All repository query methods automatically filter `WHERE deletedAt IS NULL` — **except** methods inside the Trash repository, which query `WHERE deletedAt IS NOT NULL`.
+
+No controller or service method should manually append a deleted-item filter. This is enforced at the repository layer by convention.
+
+---
+
+## Service Layer Invariants
+
+The following rules are validated in the **Service layer**, not the database:
+
+**File (type = `FILE`):**
+- `storageKey` — required, immutable after creation
+- `mimeType` — required, must be in allowed list
+- `size` — must be `> 0`
+
+**Folder (type = `FOLDER`):**
+- `storageKey` — must be `NULL`
+- `mimeType` — must be `NULL`
+- `size` — must be `0`
+
+---
 
 ---
 
@@ -61,26 +202,31 @@ Register a new user account. Creates `users`, `user_settings`, and `storage_stat
 
 **Body:**
 ```json
-{ "email": "user@example.com", "password": "SecurePass123!", "firstName": "John", "lastName": "Doe" }
+{ "name": "Pratik Pandey", "email": "user@example.com", "password": "SecurePass123!" }
 ```
-**Response `201`:** `{ user, accessToken }` + sets HTTP-only refresh cookie.
+**Response `201`:** `{ user, accessToken, refreshToken }` — tokens returned in response body.
 
 ---
 
 ### `POST /auth/login`
 **Body:** `{ "email": "...", "password": "..." }`  
-**Response `200`:** `{ user, accessToken }` + sets HTTP-only refresh cookie.
+**Response `200`:** `{ user, accessToken, refreshToken }` — tokens returned in response body.
 
 ---
 
 ### `POST /auth/refresh`
-Issue new access token using refresh cookie.  
-**Response `200`:** `{ "accessToken": "eyJ..." }`
+Issue a new token pair using the current refresh token. The old refresh token is rotated (invalidated) atomically.
+
+**Body:** `{ "refreshToken": "..." }`  
+**Response `200`:** `{ "accessToken": "eyJ...", "refreshToken": "..." }`
 
 ---
 
 ### `POST /auth/logout`
-Revoke refresh token. **Response `200`:** `{ "message": "Logged out" }`
+Revoke refresh token.
+
+**Body:** `{ "refreshToken": "..." }`  
+**Response `200`:** `{ "message": "Logged out successfully." }`
 
 ---
 
@@ -106,34 +252,43 @@ Phase 1: Request presigned S3 PUT URL. Creates a File record with `status = PEND
 { "displayName": "document.pdf", "mimeType": "application/pdf", "size": 2048576, "parentId": null }
 ```
 
-**Validation performed server-side:**
+> `parentId` — INT or `null`. `null` places the file at the root of the user's drive.
+
+**Validation performed server-side (Service layer):**
 - `size` must not cause storage quota to be exceeded → `413 QUOTA_EXCEEDED`
-- `mimeType` must be in allowed list → `400 VALIDATION_ERROR`
-- `displayName` must not conflict with existing item in target folder → `409 NAME_CONFLICT`
+- `mimeType` must be in the allowed list → `400 INVALID_MIME_TYPE`
+- `displayName` must not conflict with an existing item in the target folder → `409 NAME_CONFLICT`
 
 **Response `201`:**
 ```json
 { "fileId": 123, "uploadUrl": "https://s3.amazonaws.com/..." }
 ```
 
+> `fileId` is an **integer** (INT AUTO_INCREMENT).
+
 ---
 
 ### `POST /upload/complete` 🔒
-Phase 2: Confirm upload completed. Backend verifies object exists in S3, updates `status = READY`, updates `StorageStats.usedStorage`, creates `notifications` record (type: `upload_complete`).  
+Phase 2: Confirm upload completed. Backend verifies the S3 object exists, then atomically: sets `status = READY`, increments `StorageStats.usedStorage`, creates a `notifications` record (`type: upload_complete`).
+
+If the S3 object does not exist, returns `422 UPLOAD_NOT_COMPLETED`.
 
 **Body:**
 ```json
 { "fileId": 123 }
 ```
+
+> `fileId` is an **integer**.
+
 **Response `200`:** Complete file object.
 
 ---
 
 ### `GET /files` 🔒
-List files in a folder.
+List files in a folder. Only returns items with `status = READY` and `deletedAt IS NULL` (enforced at repository layer).
 
-**Query Params:** `folderId` (null = root), `sortBy` (`name`|`size`|`createdAt`|`extension`), `sortDir` (`asc`|`desc`), `page`, `limit`  
-**Response `200`:** Paginated file array.
+**Query Params:** `parentId` (INT or omit/null for root), `sortBy`, `sortDir`, `page`, `limit`  
+**Response `200`:** Paginated file array. See [Pagination Standard](#pagination-standard) and [Sorting Standard](#sorting-standard).
 
 ---
 
@@ -159,17 +314,17 @@ Presigned S3 GET URL for preview (15-min TTL). Updates `lastAccessedAt`.
 ---
 
 ### `PATCH /files/:id/rename` 🔒
-**Body:** `{ "name": "new-name.pdf" }`
+**Body:** `{ "displayName": "new-name.pdf" }`
 
-**Validation:** `name` must not conflict in same folder → `409 NAME_CONFLICT`  
+**Validation:** `displayName` must not conflict in same folder → `409 NAME_CONFLICT`  
 **Response `200`:** Updated file object.
 
 ---
 
 ### `PATCH /files/:id/move` 🔒
-**Body:** `{ "destinationFolderId": "uuid-or-null" }`
+**Body:** `{ "destinationParentId": "int-or-null" }`
 
-**Validation:** `name` must not conflict in destination → `409 NAME_CONFLICT`  
+**Validation:** `displayName` must not conflict in destination → `409 NAME_CONFLICT`  
 **Response `200`:** Updated file object.
 
 ---
@@ -177,8 +332,8 @@ Presigned S3 GET URL for preview (15-min TTL). Updates `lastAccessedAt`.
 ### `POST /files/:id/copy` 🔒
 Copy file to destination. **Auto-renames** if name conflicts: `file.pdf` → `file (copy).pdf` → `file (copy 2).pdf`
 
-**Body:** `{ "destinationFolderId": "uuid-or-null" }`  
-**Response `201`:** New file object with resolved name.
+**Body:** `{ "destinationParentId": "int-or-null" }`  
+**Response `201`:** New file object with resolved `displayName`.
 
 ---
 
@@ -209,9 +364,9 @@ All favorited files. **Response `200`:** Array of file objects.
 ### `POST /folders` 🔒
 Create folder.
 
-**Body:** `{ "name": "My Projects", "parentId": "uuid-or-null", "color": "#6366f1" }`
+**Body:** `{ "displayName": "My Projects", "parentId": null }`
 
-**Validation:** `name` must not conflict in same parent → `409 NAME_CONFLICT`  
+**Validation:** `displayName` must not conflict in same parent → `409 NAME_CONFLICT`  
 **Response `201`:** Folder object.
 
 ---
@@ -235,9 +390,9 @@ Ancestor path from root.
 ```json
 {
   "data": [
-    { "id": null, "name": "My Drive" },
-    { "id": "uuid-1", "name": "Documents" },
-    { "id": "uuid-2", "name": "Projects" }
+    { "id": null, "displayName": "My Drive" },
+    { "id": 12, "displayName": "Documents" },
+    { "id": 47, "displayName": "Projects" }
   ]
 }
 ```
@@ -252,18 +407,18 @@ All files and subfolders in one call.
 ---
 
 ### `PATCH /folders/:id/rename` 🔒
-**Body:** `{ "name": "New Name" }`
+**Body:** `{ "displayName": "New Name" }`
 
-**Validation:** `name` must not conflict in same parent → `409 NAME_CONFLICT`  
+**Validation:** `displayName` must not conflict in same parent → `409 NAME_CONFLICT`  
 **Response `200`:** Updated folder object.
 
 ---
 
 ### `PATCH /folders/:id/move` 🔒
-**Body:** `{ "destinationParentId": "uuid-or-null" }`
+**Body:** `{ "destinationParentId": "int-or-null" }`
 
 **Validation:**
-- `name` must not conflict in destination → `409 NAME_CONFLICT`
+- `displayName` must not conflict in destination → `409 NAME_CONFLICT`
 - `destinationParentId` must not be the folder itself or any of its descendants → `422 CIRCULAR_REFERENCE`
 
 **Response `200`:** Updated folder object.
@@ -273,8 +428,8 @@ All files and subfolders in one call.
 ### `POST /folders/:id/copy` 🔒
 Deep copy folder. Auto-renames if name conflicts: `Projects` → `Projects (copy)` → `Projects (copy 2)`
 
-**Body:** `{ "destinationParentId": "uuid-or-null" }`  
-**Response `202`:** `{ "newFolderId": "uuid", "message": "Copy in progress" }` *(async for large trees)*
+**Body:** `{ "destinationParentId": "int-or-null" }`  
+**Response `202`:** `{ "newFolderId": 48, "message": "Copy in progress" }` *(async for large trees)*
 
 ---
 
@@ -325,7 +480,7 @@ Empty Trash. Permanently deletes all trashed items and S3 objects.
 | maxSize | int | Bytes |
 | from | string | ISO date — createdAt after |
 | to | string | ISO date — createdAt before |
-| folderId | string | Search within folder |
+| parentId | int | Search within this folder (INT); omit or null for all folders |
 | sortBy | string | `name`, `size`, `createdAt` |
 | sortDir | string | `asc` or `desc` |
 | page | int | |
@@ -343,21 +498,17 @@ Empty Trash. Permanently deletes all trashed items and S3 objects.
 ```json
 {
   "data": {
-    "quotaBytes": 5368709120,
-    "usedBytes": 1073741824,
-    "freeBytes": 4294967296,
-    "usedPercent": 20.0,
-    "breakdown": {
-      "imageBytes": 536870912,
-      "videoBytes": 268435456,
-      "audioBytes": 134217728,
-      "documentBytes": 67108864,
-      "otherBytes": 67108864
-    },
-    "fileCount": 142
+    "usedStorage": 52428800,
+    "storageLimit": 104857600,
+    "freeStorage": 52428800,
+    "usedPercent": 50.0
   }
 }
 ```
+
+> `storageLimit` default is `104857600` bytes (100 MB).  
+> `freeStorage = storageLimit - usedStorage`.  
+> `usedPercent = (usedStorage / storageLimit) * 100`, rounded to one decimal.
 
 ---
 
@@ -497,24 +648,45 @@ Access shared file.
 
 ## Appendix A — Unified File Object Schema
 
+**File example:**
 ```json
 {
-  "id": 1,
-  "ownerId": "uuid",
-  "parentId": null,
+  "id": 42,
+  "ownerId": "cuid-string",
+  "parentId": 7,
   "displayName": "document.pdf",
-  "storageKey": "users/uuid/files/uuid",
+  "storageKey": "users/cuid-string/files/uuid-v4",
   "mimeType": "application/pdf",
   "size": 2048576,
   "type": "FILE",
   "status": "READY",
   "uploadStartedAt": "2026-06-29T17:55:00Z",
+  "deletedAt": null,
   "createdAt": "2026-06-29T18:00:00Z",
   "updatedAt": "2026-06-29T18:00:00Z"
 }
 ```
 
-*Note: For folders, `storageKey` is null, `mimeType` is null, `size` is 0, and `type` is FOLDER.*
+**Folder example:**
+```json
+{
+  "id": 7,
+  "ownerId": "cuid-string",
+  "parentId": null,
+  "displayName": "My Projects",
+  "storageKey": null,
+  "mimeType": null,
+  "size": 0,
+  "type": "FOLDER",
+  "status": "READY",
+  "uploadStartedAt": null,
+  "deletedAt": null,
+  "createdAt": "2026-06-29T18:00:00Z",
+  "updatedAt": "2026-06-29T18:00:00Z"
+}
+```
+
+> `id` and `parentId` are **integers** for both files and folders. `ownerId` is a cuid string (User.id).
 
 ## Appendix C — Naming Conflict Rules Summary
 
@@ -522,8 +694,8 @@ Access shared file.
 |---|---|
 | Upload | `409 NAME_CONFLICT` — user must rename manually |
 | Create Folder | `409 NAME_CONFLICT` — user must rename manually |
-| Rename File | `409 NAME_CONFLICT` — user must choose a different name |
-| Rename Folder | `409 NAME_CONFLICT` — user must choose a different name |
+| Rename File | `409 NAME_CONFLICT` — user must choose a different `displayName` |
+| Rename Folder | `409 NAME_CONFLICT` — user must choose a different `displayName` |
 | Move File | `409 NAME_CONFLICT` — user must resolve manually |
 | Move Folder | `409 NAME_CONFLICT` or `422 CIRCULAR_REFERENCE` |
 | Copy File | **Auto-rename** → `file (copy).pdf`, `file (copy 2).pdf`, ... |

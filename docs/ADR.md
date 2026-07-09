@@ -1,6 +1,6 @@
 # Fileex — Architecture Decision Records (ADR)
 
-**Version:** 1.0 | **Status:** Accepted | **Last Updated:** 2026-06-30
+**Version:** 1.1 | **Status:** Accepted | **Last Updated:** 2026-07-08
 
 ---
 
@@ -260,16 +260,17 @@ Should file uploads be proxied through the backend server, or should clients upl
 ### Decision
 **Two-phase presigned URL upload.**
 
-**Phase 1:** Client requests an upload URL from the backend.
-- Backend validates: quota, MIME type, file size, folder ownership
-- Backend creates a `files` record with `uploadStatus: pending`
+**Phase 1 — Initiate:** Client sends `POST /upload/initiate`.
+- Backend validates: quota (`StorageStats.usedStorage + size ≤ storageLimit`), MIME type, name conflict (`displayName` in target `parentId`)
+- Backend creates a `files` record with `status = PENDING`, `storageKey = users/{userId}/files/{uuid}`
 - Backend generates a presigned S3 PUT URL (expires in 15 minutes)
 - Backend returns `{ fileId, uploadUrl }` to client
 
-**Phase 2:** Client uploads directly to S3 using the presigned URL.
-- No backend involved during the actual transfer
-- Client sends `POST /files/:id/confirm` on success
-- Backend marks `uploadStatus: confirmed` and updates `storageStats`
+**Phase 2 — Complete:** Client uploads directly to S3, then sends `POST /upload/complete`.
+- No backend involved during the actual byte transfer
+- Backend verifies the S3 object exists
+- Backend sets `status = READY` and increments `StorageStats.usedStorage` (only once)
+- Backend creates a `notifications` record (`upload_complete`) in the same transaction
 
 This is the exact pattern used by Dropbox, Notion, Linear, and AWS itself.
 
@@ -277,8 +278,10 @@ This is the exact pattern used by Dropbox, Notion, Linear, and AWS itself.
 - **Positive:** Backend handles zero file bytes — fully stateless and horizontally scalable
 - **Positive:** Upload speed is limited only by client's bandwidth to S3 (no backend hop)
 - **Positive:** Backend can enforce all business rules (quota, MIME, size) before the upload begins
-- **Negative:** Interrupted uploads leave `pending` records — requires a cleanup job to purge stale `pending` files older than 1 hour
+- **Negative:** Interrupted uploads leave `PENDING` records in the database. In MVP, these are resolved **inline** during file listing via the Upload Recovery strategy (see ARCHITECTURE.md §6.2). The `uploadStartedAt` timestamp is stored for a future scheduled cleanup job.
 - **Negative:** Confirm step adds a small UX complexity — handled transparently in the client's upload hook
+
+**Future Enhancement:** A `purgePendingUploads` background job that hourly marks stale PENDING records (older than 1 hour) as FAILED, without requiring a user to trigger a listing request.
 
 ---
 

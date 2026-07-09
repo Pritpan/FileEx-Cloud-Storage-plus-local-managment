@@ -1,6 +1,6 @@
 # Fileex — System Architecture
 
-**Version:** 1.3 | **Status:** Planning | **Last Updated:** 2026-06-30
+**Version:** 1.4 | **Status:** Finalized | **Last Updated:** 2026-07-08
 
 ---
 
@@ -297,21 +297,22 @@ src/
 │   ├── storage/            # stats dashboard
 │   ├── activity/           # feed
 │   ├── users/              # profile, avatar
-│   ├── settings/           # GET, PATCH settings (new)
-│   └── notifications/      # list, read, dismiss (new)
+│   ├── settings/           # GET, PATCH settings
+│   └── notifications/      # list, read, dismiss
 ├── utils/                      # Server-internal utilities only
 │   ├── errors.js               # AppError, ConflictError, QuotaError, etc.
 │   ├── s3Helpers.js            # Presigned URL generation, delete, copy
 │   ├── nameResolver.js         # Auto-rename logic for copy operations
 │   ├── validators.js           # Shared Zod schemas (server-internal)
 │   └── logger.js               # Winston logger
-├── jobs/                       # Scheduled background jobs
+├── jobs/                       # Scheduled background jobs (Future / v2)
 │   ├── purgeTrash.js           # Purge trash items past scheduledPurgeAt
-│   ├── purgePendingUploads.js  # Clean stale 'pending' file records
 │   └── purgeNotifications.js   # Remove notifications older than 90 days
 ├── app.js                      # Express app setup
 └── server.js                   # HTTP server entrypoint
 ```
+
+> **Note on `jobs/`:** In MVP, the only background job is trash purge (30-day retention) and notification cleanup. `purgePendingUploads` is **not** implemented in MVP — stale PENDING records are resolved inline via the Upload Recovery strategy (see §6.2). A dedicated cleanup job for PENDING records is a Future enhancement.
 
 > **Note on `utils/`:** This folder is server-internal only. It is not a shared package and is not imported by `web/` or `desktop/`. The name `utils/` is used instead of `shared/` to avoid implying cross-application sharing.
 
@@ -339,14 +340,14 @@ This function is used by: `FileService.copyFile()`, `FileService.duplicateFile()
 ```javascript
 // Inside FileService.confirmUpload():
 await prisma.$transaction([
-  prisma.file.update({ where: { id }, data: { uploadStatus: 'confirmed' } }),
-  prisma.storageStats.update({ ... }),
+  prisma.file.update({ where: { id }, data: { status: 'READY' } }),
+  prisma.storageStats.update({ where: { userId }, data: { usedStorage: { increment: file.size } } }),
   prisma.notification.create({
     data: {
       userId,
       type: 'upload_complete',
       title: 'Upload Complete',
-      body: `${file.name} was uploaded successfully.`,
+      body: `${file.displayName} was uploaded successfully.`,
       metadata: { fileId: file.id }
     }
   })
@@ -453,18 +454,21 @@ Update StorageStats.usedStorage
 
 ### 6.2 Upload Recovery
 
-Whenever files are listed (e.g. GET /files):
-If `PENDING` files exist:
+Upload recovery is performed **inline** whenever files are listed (e.g. `GET /files`). There is no background cleanup worker in MVP.
+
+If `PENDING` file records exist for the requesting user:
 1. For each `PENDING` file, verify object existence in S3.
-2. If object exists:
+2. **Object exists:**
    - `status = READY`
-   - Update `usedStorage` (only once)
-3. If object does not exist:
+   - Increment `StorageStats.usedStorage` (only once — idempotent)
+3. **Object does not exist:**
    - `status = FAILED`
 
-No background cleanup worker is used for MVP. The `uploadStartedAt` timestamp exists for future cleanup strategies.
+The `uploadStartedAt` timestamp exists to support a future scheduled cleanup job (e.g. purge PENDING records older than 1 hour). That job is **not** implemented in MVP.
 
-### 6.2 Download / Preview Flow
+**Future Enhancement:** A `purgePendingUploads` background job that runs hourly and marks stale PENDING records as FAILED without requiring a user listing request.
+
+### 6.3 Download / Preview Flow
 
 ```
 Client → GET /files/:id/download-url → presigned GET URL → Client fetches from S3 directly
@@ -476,14 +480,25 @@ Client → GET /files/:id/download-url → presigned GET URL → Client fetches 
 
 ### 7.1 Dual-Token Strategy
 
+**Current Implementation:**
+
 | Token | Storage | Expiry | Purpose |
 |---|---|---|---|
-| Access Token (JWT) | Memory (JS var) | 15 min | Authenticate API requests |
-| Refresh Token | HTTP-only Cookie | 7 days | Issue new access tokens |
+| Access Token (JWT) | Memory (JS variable) | 15 min | Authenticate API requests via `Authorization: Bearer` header |
+| Refresh Token | Response body (client stores securely) | 7 days | Issue new token pairs via `POST /auth/refresh` |
+
+Both tokens are returned in the **response body**. The client is responsible for secure storage.
+
+**Future Production Enhancement:**
+
+| Client | Enhancement |
+|---|---|
+| Web Application | Refresh Token migrates to HTTP-only Secure SameSite cookie. No body delivery needed. |
+| Desktop Application | Refresh Token stored in OS credential storage (e.g., Electron `safeStorage`). Cookie-based auth is not applicable. |
 
 ### 7.2 Refresh Flow
 
-Axios interceptor detects 401 → POST /auth/refresh (cookie sent automatically) → Backend issues new tokens → Retries original request.
+Axios interceptor detects 401 → `POST /auth/refresh` with `{ refreshToken }` in body → Backend issues new token pair → Retries original request.
 
 ---
 
@@ -522,12 +537,13 @@ See `ADR.md` for full decision records.
 |---|---|
 | ADR-001 | MySQL over MongoDB |
 | ADR-002 | Prisma over Raw SQL |
-| ADR-003 | AWS S3 over DB file storage |
+| ADR-003 | AWS S3 over database file storage |
 | ADR-004 | Manual upload over auto-sync |
 | ADR-005 | Client-side clipboard |
 | ADR-006 | Soft delete over hard delete |
 | ADR-007 | Two-phase presigned URL upload |
 | ADR-008 | Independent Applications (No Shared Packages) |
+| ADR-009 | Single File Table & Immutable Storage Keys |
 
 ---
 

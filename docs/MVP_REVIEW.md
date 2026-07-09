@@ -1,6 +1,6 @@
 # Fileex — MVP Feature Review
 
-**Version:** 1.0 | **Reviewer:** Staff Engineering Team | **Date:** 2026-06-30  
+**Version:** 1.1 | **Reviewer:** Staff Engineering Team | **Date:** 2026-07-08  
 **Purpose:** Define a realistic, shippable v1 scope. Prevent scope creep. Protect architectural extensibility.
 
 ---
@@ -28,12 +28,14 @@
 | Feature | Tier | Rationale |
 |---|---|---|
 | Register (email + password) | **Must Have** | Without this, nothing works |
-| Login (JWT + HTTP-only cookie) | **Must Have** | Core auth mechanism |
-| Silent token refresh | **Must Have** | Without this, users are logged out every 15 minutes |
+| Login — JWT access token + refresh token (body-based) | **Must Have** | Core auth mechanism |
+| Silent token refresh (refresh token rotation) | **Must Have** | Without this, users are logged out every 15 minutes |
 | Logout | **Must Have** | Basic security expectation |
 | Change Password | **Should Have** | Security essential, not complex |
 | User Profile (name, avatar) | **Should Have** | Important for settings page |
 | Storage quota enforcement | **Must Have** | Prevents abuse; tied to upload flow |
+
+> **Future Enhancement:** The web application will migrate Refresh Token delivery to HTTP-only Secure SameSite cookies. The desktop application will use OS credential storage. Cookie-based auth is not applicable to Electron.
 
 ---
 

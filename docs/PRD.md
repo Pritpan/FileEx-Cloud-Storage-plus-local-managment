@@ -1,6 +1,6 @@
 # Fileex — Product Requirements Document (PRD)
 
-**Version:** 1.3 | **Status:** Planning | **Last Updated:** 2026-06-30
+**Version:** 1.4 | **Status:** Finalized | **Last Updated:** 2026-07-08
 
 ---
 
@@ -47,13 +47,15 @@ Fileex bridges the gap between local and cloud file management. Users should fee
 
 | ID | Feature | Priority |
 |---|---|---|
-| AUTH-01 | User Registration (email + password) | P0 |
-| AUTH-02 | Login — JWT + HTTP-only refresh cookie | P0 |
-| AUTH-03 | Silent token refresh | P0 |
+| AUTH-01 | User Registration (email + password + name) | P0 |
+| AUTH-02 | Login — JWT access token + refresh token returned in response body | P0 |
+| AUTH-03 | Silent token refresh (refresh token rotation via `POST /auth/refresh`) | P0 |
 | AUTH-04 | Logout (invalidate refresh token) | P0 |
 | AUTH-05 | User Profile (name, avatar, email) | P1 |
 | AUTH-06 | Change Password | P1 |
 | AUTH-07 | Storage quota management + enforcement | P0 |
+
+> **Future Production Enhancement:** The web application will migrate Refresh Token delivery to an HTTP-only Secure SameSite cookie. The desktop application will use OS credential storage (e.g., Electron `safeStorage`). Cookie-based authentication is not applicable to Electron.
 
 ### 5.2 File Operations
 
@@ -216,7 +218,7 @@ The Settings module allows users to manage their account preferences, appearance
 
 | ID | Feature | Priority | Notes |
 |---|---|---|---|
-| SET-01 | Edit Profile — first name, last name | P1 | `PATCH /users/me` |
+| SET-01 | Edit Profile — name | P1 | `PATCH /users/me` |
 | SET-02 | Change Email *(with re-verification)* | **v2** | Requires email verification flow |
 | SET-03 | Change Password | P1 | `PATCH /auth/password` |
 | SET-04 | Profile Picture upload + remove | P2 | Two-phase S3 upload for avatar |
@@ -243,7 +245,7 @@ Fileex includes an in-app notification system that surfaces feedback for all asy
 
 | ID | Notification Type | Trigger | Priority |
 |---|---|---|---|
-| NOTIF-01 | Upload Completed | File `uploadStatus` confirmed | P1 |
+| NOTIF-01 | Upload Completed | File `status` set to `READY` | P1 |
 | NOTIF-02 | Upload Failed | Confirm step fails / S3 error | P1 |
 | NOTIF-03 | Download Started | Download URL issued | P2 |
 | NOTIF-04 | Delete Successful | File/folder soft deleted | P2 |
@@ -318,7 +320,7 @@ The auto-rename resolution runs entirely server-side. The client receives the fi
 | Performance | Settings API < 100ms (cached) |
 | Performance | Upload progress shown in real time |
 | Security | JWT access token: 15min expiry |
-| Security | Refresh token: 7 days, HTTP-only cookie |
+| Security | Refresh token: 7 days, rotated on every use; delivered in response body (see AUTH-02) |
 | Security | All S3 access via presigned URLs only |
 | Security | MIME type + file size validation on upload |
 | Security | Rate limiting on auth endpoints |

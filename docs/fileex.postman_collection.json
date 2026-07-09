@@ -1,14 +1,15 @@
 {
   "info": {
     "name": "Fileex API",
-    "description": "Complete API collection for Fileex v1.3. Base URL stored in {{baseUrl}} variable. Access token stored in {{accessToken}} variable.",
+    "description": "Complete API collection for Fileex v1.4. Base URL stored in {{baseUrl}} variable. Access token stored in {{accessToken}} variable. Tokens are returned in the response body (not cookies). File IDs and Folder IDs are integers (INT AUTO_INCREMENT); all other entity IDs are strings.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:3000/api/v1", "type": "string" },
     { "key": "accessToken", "value": "", "type": "string" },
-    { "key": "fileId", "value": "", "type": "string" },
-    { "key": "folderId", "value": "", "type": "string" },
+    { "key": "refreshToken", "value": "", "type": "string" },
+    { "key": "fileId", "value": "1", "type": "string" },
+    { "key": "folderId", "value": "1", "type": "string" },
     { "key": "trashId", "value": "", "type": "string" },
     { "key": "notificationId", "value": "", "type": "string" }
   ],
@@ -37,18 +38,21 @@
         },
         {
           "name": "Refresh Token",
+          "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json();", "if(r.data && r.data.accessToken) pm.collectionVariables.set('accessToken', r.data.accessToken);", "if(r.data && r.data.refreshToken) pm.collectionVariables.set('refreshToken', r.data.refreshToken);"], "type": "text/javascript" } }],
           "request": {
             "method": "POST",
-            "header": [],
-            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth","refresh"] }
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth","refresh"] },
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }
           }
         },
         {
           "name": "Logout",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth","logout"] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth","logout"] },
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}" }
           }
         },
         {
@@ -74,21 +78,22 @@
       "name": "02 — Files",
       "item": [
         {
-          "name": "Request Upload URL (Phase 1)",
+          "name": "Initiate Upload (Phase 1)",
           "event": [{ "listen": "test", "script": { "exec": ["const r = pm.response.json();", "if(r.data && r.data.fileId) pm.collectionVariables.set('fileId', r.data.fileId);"], "type": "text/javascript" } }],
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/files/upload-url", "host": ["{{baseUrl}}"], "path": ["files","upload-url"] },
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"document.pdf\",\n  \"mimeType\": \"application/pdf\",\n  \"sizeBytes\": 2048576,\n  \"folderId\": null\n}" }
+            "url": { "raw": "{{baseUrl}}/upload/initiate", "host": ["{{baseUrl}}"], "path": ["upload","initiate"] },
+            "body": { "mode": "raw", "raw": "{\n  \"displayName\": \"document.pdf\",\n  \"mimeType\": \"application/pdf\",\n  \"size\": 2048576,\n  \"parentId\": null\n}" }
           }
         },
         {
-          "name": "Confirm Upload (Phase 2)",
+          "name": "Complete Upload (Phase 2)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "url": { "raw": "{{baseUrl}}/files/{{fileId}}/confirm", "host": ["{{baseUrl}}"], "path": ["files","{{fileId}}","confirm"] }
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/upload/complete", "host": ["{{baseUrl}}"], "path": ["upload","complete"] },
+            "body": { "mode": "raw", "raw": "{\n  \"fileId\": {{fileId}}\n}" }
           }
         },
         {
@@ -96,7 +101,7 @@
           "request": {
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "url": { "raw": "{{baseUrl}}/files?folderId=&sortBy=name&sortDir=asc&page=1&limit=50", "host": ["{{baseUrl}}"], "path": ["files"], "query": [{"key":"folderId","value":""},{"key":"sortBy","value":"name"},{"key":"sortDir","value":"asc"},{"key":"page","value":"1"},{"key":"limit","value":"50"}] }
+            "url": { "raw": "{{baseUrl}}/files?parentId=&sortBy=name&sortDir=asc&page=1&limit=50", "host": ["{{baseUrl}}"], "path": ["files"], "query": [{"key":"parentId","value":"","description":"INT or leave empty for root"},{"key":"sortBy","value":"name"},{"key":"sortDir","value":"asc"},{"key":"page","value":"1"},{"key":"limit","value":"50"}] }
           }
         },
         {
@@ -129,7 +134,7 @@
             "method": "PATCH",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
             "url": { "raw": "{{baseUrl}}/files/{{fileId}}/rename", "host": ["{{baseUrl}}"], "path": ["files","{{fileId}}","rename"] },
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"renamed-document.pdf\"\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"displayName\": \"renamed-document.pdf\"\n}" }
           }
         },
         {
@@ -138,7 +143,7 @@
             "method": "PATCH",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
             "url": { "raw": "{{baseUrl}}/files/{{fileId}}/move", "host": ["{{baseUrl}}"], "path": ["files","{{fileId}}","move"] },
-            "body": { "mode": "raw", "raw": "{\n  \"destinationFolderId\": \"{{folderId}}\"\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"destinationParentId\": {{folderId}}\n}" }
           }
         },
         {
@@ -147,7 +152,7 @@
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
             "url": { "raw": "{{baseUrl}}/files/{{fileId}}/copy", "host": ["{{baseUrl}}"], "path": ["files","{{fileId}}","copy"] },
-            "body": { "mode": "raw", "raw": "{\n  \"destinationFolderId\": null\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"destinationParentId\": null\n}" }
           }
         },
         {
@@ -194,7 +199,7 @@
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
             "url": { "raw": "{{baseUrl}}/folders", "host": ["{{baseUrl}}"], "path": ["folders"] },
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"My Projects\",\n  \"parentId\": null,\n  \"color\": \"#6366f1\"\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"displayName\": \"My Projects\",\n  \"parentId\": null\n}" }
           }
         },
         {
@@ -235,7 +240,7 @@
             "method": "PATCH",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
             "url": { "raw": "{{baseUrl}}/folders/{{folderId}}/rename", "host": ["{{baseUrl}}"], "path": ["folders","{{folderId}}","rename"] },
-            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Renamed Folder\"\n}" }
+            "body": { "mode": "raw", "raw": "{\n  \"displayName\": \"Renamed Folder\"\n}" }
           }
         },
         {
@@ -314,7 +319,7 @@
             "url": {
               "raw": "{{baseUrl}}/search?q=document&type=file&sortBy=name&sortDir=asc&page=1&limit=50",
               "host": ["{{baseUrl}}"], "path": ["search"],
-              "query": [{"key":"q","value":"document"},{"key":"type","value":"file"},{"key":"mimeCategory","value":"","disabled":true},{"key":"extension","value":"","disabled":true},{"key":"minSize","value":"","disabled":true},{"key":"maxSize","value":"","disabled":true},{"key":"from","value":"","disabled":true},{"key":"to","value":"","disabled":true},{"key":"folderId","value":"","disabled":true},{"key":"sortBy","value":"name"},{"key":"sortDir","value":"asc"},{"key":"page","value":"1"},{"key":"limit","value":"50"}]
+              "query": [{"key":"q","value":"document"},{"key":"type","value":"file"},{"key":"mimeCategory","value":"","disabled":true},{"key":"extension","value":"","disabled":true},{"key":"minSize","value":"","disabled":true},{"key":"maxSize","value":"","disabled":true},{"key":"from","value":"","disabled":true},{"key":"to","value":"","disabled":true},{"key":"parentId","value":"","disabled":true},{"key":"sortBy","value":"name"},{"key":"sortDir","value":"asc"},{"key":"page","value":"1"},{"key":"limit","value":"50"}]
             }
           }
         }
@@ -466,14 +471,6 @@
             "method": "GET",
             "header": [],
             "url": { "raw": "http://localhost:3000/health", "raw": "http://localhost:3000/health" }
-          }
-        },
-        {
-          "name": "Auth Module Status",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": { "raw": "{{baseUrl}}/auth", "host": ["{{baseUrl}}"], "path": ["auth"] }
           }
         }
       ]

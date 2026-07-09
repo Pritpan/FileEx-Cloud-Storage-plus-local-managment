@@ -1,6 +1,6 @@
 # Fileex — Database Design
 
-**Version:** 1.3 | **Status:** Planning | **Last Updated:** 2026-06-30
+**Version:** 1.4 | **Status:** Finalized | **Last Updated:** 2026-07-08
 
 ---
 
@@ -45,14 +45,11 @@ erDiagram
 
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
-| id | VARCHAR(36) | PK | UUID v4 |
+| id | VARCHAR(36) | PK | cuid() |
+| name | VARCHAR(100) | NOT NULL | Display name |
 | email | VARCHAR(255) | UNIQUE, NOT NULL | Login identifier |
-| passwordHash | VARCHAR(255) | NOT NULL | bcrypt hash |
-| firstName | VARCHAR(100) | NOT NULL | |
-| lastName | VARCHAR(100) | NOT NULL | |
+| hashedPassword | VARCHAR(255) | NOT NULL | bcrypt hash (10 rounds) |
 | avatarUrl | VARCHAR(500) | NULLABLE | S3 URL or null |
-| storageQuotaBytes | BIGINT | DEFAULT 5368709120 | Default: 5 GB |
-| isActive | BOOLEAN | DEFAULT TRUE | |
 | createdAt | DATETIME | DEFAULT NOW() | |
 | updatedAt | DATETIME | AUTO UPDATE | |
 
@@ -89,17 +86,46 @@ Updated in v1.3: Unified File and Folder tables into a single `files` table.
 | mimeType | VARCHAR(127) | NULLABLE | e.g. `application/pdf` (null for folders) |
 | size | BIGINT | NOT NULL | File size in bytes (0 for folders) |
 | type | ENUM | NOT NULL | `FILE` or `FOLDER` |
-| status | ENUM | NOT NULL | `PENDING`, `READY`, `FAILED`, `DELETED` |
-| uploadStartedAt | DATETIME | NULLABLE | For future cleanup strategies |
+| status | ENUM | NOT NULL | `PENDING`, `READY`, `FAILED` |
+| uploadStartedAt | DATETIME | NULLABLE | Default `now()` — used for future cleanup strategies |
+| deletedAt | DATETIME | NULLABLE | NULL = active; NOT NULL = in Trash (soft delete) |
 | createdAt | DATETIME | DEFAULT NOW() | |
 | updatedAt | DATETIME | AUTO UPDATE | |
 
-**Indexes:** `ownerId`, `parentId`, `status`  
+**Indexes:** `ownerId`, `parentId`, `status`, `deletedAt`  
 **Unique Constraint:** `@@unique([ownerId, parentId, displayName])` — prevents duplicate names in the same folder.
 
+**Prisma defaults:** `type = FILE`, `size = 0`, `status = PENDING`, `uploadStartedAt = now()`, `deletedAt = NULL`
+
 #### Enums
-**FileType:** `FILE`, `FOLDER`
-**FileStatus:** `PENDING`, `READY`, `FAILED`, `DELETED` (DELETED reserved for future soft-delete support)
+**FileType:** `FILE`, `FOLDER`  
+**FileStatus:** `PENDING`, `READY`, `FAILED`  
+
+> **Note:** `DELETED` is NOT part of `FileStatus`. Deletion is handled by `deletedAt` (soft delete). File status tracks upload state only.
+
+#### Service Layer Rules
+| Rule | FILE | FOLDER |
+|---|---|---|
+| `storageKey` | Required (immutable after creation) | Must be `NULL` |
+| `mimeType` | Required | Must be `NULL` |
+| `size` | Must be `> 0` | Must be `0` |
+
+These validations are enforced in the **Service layer**, not the database.
+
+#### storageKey Format
+`users/{userId}/files/{uuid}`  
+The `storageKey` is immutable. Rename only updates `displayName`. Move only updates `parentId`. No S3 rename or move operation is ever performed.
+
+---
+
+### 3.4 `deletedAt` (Soft Delete Pattern)
+
+The `files` table uses `deletedAt` for soft deletes. This is separate from `FileStatus`.
+
+- `deletedAt = NULL` → Active item
+- `deletedAt IS NOT NULL` → Item is in Trash
+
+All file listing queries filter `WHERE deletedAt IS NULL`. This is enforced at the repository layer. The `deletedAt` timestamp is set when a user moves an item to Trash. The actual S3 object is only deleted on permanent delete.
 
 ---
 
@@ -108,7 +134,7 @@ Updated in v1.3: Unified File and Folder tables into a single `files` table.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | id | VARCHAR(36) | PK | UUID v4 |
-| fileId | VARCHAR(36) | FK → files.id | |
+| fileId | INT | FK → files.id | |
 | versionNumber | INT | NOT NULL | Monotonically increasing |
 | s3Key | VARCHAR(1000) | NOT NULL | Version-specific S3 key |
 | sizeBytes | BIGINT | NOT NULL | |
@@ -126,11 +152,10 @@ Updated in v1.3: Unified File and Folder tables into a single `files` table.
 |---|---|---|---|
 | id | VARCHAR(36) | PK | UUID v4 |
 | userId | VARCHAR(36) | FK → users.id | |
-| itemId | VARCHAR(36) | NOT NULL | File or folder ID |
-| itemType | ENUM | NOT NULL | `file` or `folder` |
-| originalParentId | VARCHAR(36) | NULLABLE | Parent at delete time |
-| originalName | VARCHAR(255) | NOT NULL | Name at delete time |
-| deletedAt | DATETIME | DEFAULT NOW() | |
+| itemId | INT | FK → files.id | ID of the trashed file/folder |
+| originalParentId | INT | FK → files.id, NULLABLE | Parent at delete time (NULL = was at root) |
+| originalName | VARCHAR(255) | NOT NULL | `displayName` at delete time |
+| deletedAt | DATETIME | DEFAULT NOW() | When user moved to Trash |
 | scheduledPurgeAt | DATETIME | NOT NULL | `deletedAt + 30 days` |
 
 **Indexes:** `userId`, `scheduledPurgeAt`
@@ -144,9 +169,8 @@ Updated in v1.3: Unified File and Folder tables into a single `files` table.
 | id | VARCHAR(36) | PK | UUID v4 |
 | userId | VARCHAR(36) | FK → users.id | Actor |
 | action | ENUM | NOT NULL | See enum below |
-| itemId | VARCHAR(36) | NOT NULL | File or folder ID |
-| itemType | ENUM | NOT NULL | `file` or `folder` |
-| itemName | VARCHAR(255) | NOT NULL | Snapshot of name |
+| itemId | INT | FK → files.id | ID of the affected file/folder |
+| itemName | VARCHAR(255) | NOT NULL | Snapshot of `displayName` at action time |
 | metadata | JSON | NULLABLE | Extra context |
 | createdAt | DATETIME | DEFAULT NOW() | |
 
@@ -162,7 +186,7 @@ Updated in v1.3: Unified File and Folder tables into a single `files` table.
 |---|---|---|---|
 | id | VARCHAR(36) | PK | UUID v4 |
 | userId | VARCHAR(36) | FK → users.id | |
-| fileId | VARCHAR(36) | FK → files.id | |
+| fileId | INT | FK → files.id | |
 | createdAt | DATETIME | DEFAULT NOW() | |
 
 **Indexes:** `(userId, fileId)` UNIQUE composite
@@ -175,8 +199,8 @@ Updated in v1.3: Unified File and Folder tables into a single `files` table.
 |---|---|---|---|
 | id | VARCHAR(36) | PK | UUID v4 |
 | userId | VARCHAR(36) | UNIQUE, FK → users.id | |
-| usedStorage | BIGINT | DEFAULT 0 | Updated only after upload verification |
-| storageLimit | BIGINT | DEFAULT 5368709120 | Quota is validated using this |
+| usedStorage | BIGINT | DEFAULT 0 | Updated only after `POST /upload/complete` |
+| storageLimit | BIGINT | DEFAULT 104857600 | 100 MB default quota. Quota checked before upload. |
 | createdAt | DATETIME | DEFAULT NOW() | |
 | updatedAt | DATETIME | AUTO UPDATE | |
 
@@ -187,7 +211,7 @@ Updated in v1.3: Unified File and Folder tables into a single `files` table.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | id | VARCHAR(36) | PK | UUID v4 |
-| fileId | VARCHAR(36) | FK → files.id | |
+| fileId | INT | FK → files.id | |
 | userId | VARCHAR(36) | FK → users.id | Creator |
 | token | VARCHAR(64) | UNIQUE | Random URL-safe token |
 | expiresAt | DATETIME | NULLABLE | |
@@ -229,7 +253,7 @@ Stores in-app notifications. Poll-based in v1; WebSocket delivery in v3.
 | title | VARCHAR(255) | NOT NULL | Short notification title |
 | body | VARCHAR(500) | NULLABLE | Optional longer message |
 | isRead | BOOLEAN | DEFAULT FALSE | |
-| metadata | JSON | NULLABLE | Contextual data (fileId, folderId, etc.) |
+| metadata | JSON | NULLABLE | Contextual data (fileId as INT, parentId as INT) |
 | createdAt | DATETIME | DEFAULT NOW() | |
 
 **Notification Type Enum:**
@@ -299,10 +323,11 @@ model File {
   displayName     String
   storageKey      String?
   mimeType        String?
-  size            BigInt
-  type            FileType
-  status          FileStatus
-  uploadStartedAt DateTime?
+  size            BigInt     @default(0)
+  type            FileType   @default(FILE)
+  status          FileStatus @default(PENDING)
+  uploadStartedAt DateTime?  @default(now())
+  deletedAt       DateTime?                    // NULL = active; NOT NULL = in Trash
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
@@ -313,6 +338,7 @@ model File {
   @@index([ownerId])
   @@index([parentId])
   @@index([status])
+  @@index([deletedAt])
   @@unique([ownerId, parentId, displayName])
 }
 
@@ -325,7 +351,8 @@ enum FileStatus {
   PENDING
   READY
   FAILED
-  DELETED
+  // DELETED is intentionally omitted.
+  // Deletion state is represented by deletedAt (soft delete), not upload status.
 }
 ```
 
@@ -335,18 +362,18 @@ enum FileStatus {
 
 | Query | Approach |
 |---|---|
-| List files in folder | `WHERE folderId = ? AND deletedAt IS NULL ORDER BY ?` |
+| List files in folder | `WHERE parentId = ? AND ownerId = ? AND deletedAt IS NULL ORDER BY ?` |
 | Get folder breadcrumb | Recursive CTE on `parentId` |
-| Search by name | `WHERE name LIKE ? AND userId = ? AND deletedAt IS NULL` |
+| Search by name | `WHERE displayName LIKE ? AND ownerId = ? AND deletedAt IS NULL` |
 | Storage dashboard | Read `storageStats` (O(1)) |
-| Recent uploads | `ORDER BY createdAt DESC LIMIT 10` |
-| Recently accessed | `ORDER BY lastAccessedAt DESC LIMIT 10` (new) |
-| Trash items | `WHERE deletedAt IS NOT NULL AND userId = ?` |
+| Recent uploads | `ORDER BY createdAt DESC LIMIT 10 WHERE status = READY` |
+| Trash items | `WHERE deletedAt IS NOT NULL AND ownerId = ?` |
 | Favorites | JOIN `favorites` with `files` |
 | Activity feed | `WHERE userId = ? ORDER BY createdAt DESC LIMIT 50` |
 | Unread notifications | `WHERE userId = ? AND isRead = FALSE ORDER BY createdAt DESC` |
 | User settings | `WHERE userId = ?` (single row, always exists) |
-| Name conflict check | `WHERE userId = ? AND folderId = ? AND LOWER(name) = LOWER(?) AND deletedAt IS NULL` |
+| Name conflict check | `WHERE ownerId = ? AND parentId = ? AND LOWER(displayName) = LOWER(?) AND deletedAt IS NULL` |
+| Upload recovery | `WHERE status = PENDING AND ownerId = ?` — verify each S3 object on listing |
 
 ---
 
