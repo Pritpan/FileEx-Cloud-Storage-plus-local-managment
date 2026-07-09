@@ -17,7 +17,7 @@
 // =============================================================================
 
 import jwt from 'jsonwebtoken';
-import * as authRepository from '../modules/auth/auth.repository.js';
+import authRepository from '../modules/auth/auth.repository.js';
 
 const authenticate = async (req, res, next) => {
   const authHeader = req.headers['authorization'];

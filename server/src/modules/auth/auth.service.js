@@ -3,11 +3,17 @@
 //
 // Responsibility: Business logic for the auth module.
 // Services never touch req or res.
+//
+// Registration transaction:
+//   User creation and StorageStats creation are wrapped in a single
+//   prisma.$transaction(). If either insert fails, both are rolled back.
+//   This guarantees every active user always has exactly one StorageStats row.
 // =============================================================================
 
 import bcrypt from 'bcrypt';
 import prisma from '../../config/prisma.js';
-import * as authRepository from './auth.repository.js';
+import authRepository from './auth.repository.js';
+import storageStatsRepository from '../../modules/storage/repositories/storage-stats.repository.js';
 import { generateTokenPair, hashToken } from './token.service.js';
 
 const SALT_ROUNDS = 10;
@@ -30,9 +36,25 @@ const createServiceError = (message, statusCode, code) => {
 
 // ---------------------------------------------------------------------------
 // register
+//
+// Transaction flow:
+//   1. Duplicate-email check  — runs BEFORE the transaction.
+//      Reading before writing avoids holding a transaction open during a
+//      read-only guard. If the email is taken, we throw immediately.
+//   2. bcrypt.hash()          — runs BEFORE the transaction.
+//      Password hashing is CPU-bound (~100 ms). Keeping it outside the
+//      transaction minimises the time MySQL holds row locks.
+//   3. prisma.$transaction()  — atomic block:
+//        a. authRepository.createUser()         → inserts into `users`
+//        b. storageStatsRepository.create()     → inserts into `storage_stats`
+//      If either insert fails (e.g. FK violation, duplicate key), MySQL
+//      rolls back both inserts automatically.
+//   4. Token generation       — runs AFTER the transaction.
+//      Tokens are not persisted in this call, so they do not belong inside
+//      the atomic block.
 // ---------------------------------------------------------------------------
 export const register = async ({ name, email, password }) => {
-  // Guard: reject duplicate email before touching bcrypt (expensive)
+  // Step 1 — guard: reject duplicate email before touching bcrypt
   const existing = await authRepository.findUserByEmail(email);
   if (existing) {
     throw createServiceError(
@@ -42,13 +64,19 @@ export const register = async ({ name, email, password }) => {
     );
   }
 
+  // Step 2 — hash password outside the transaction (CPU-bound work)
   const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
 
-  const user = await authRepository.createUser({
-    name,
-    email,
-    hashedPassword,
-    avatarUrl: null,
+  // Step 3 — atomic: create User + StorageStats in one transaction
+  const user = await prisma.$transaction(async (tx) => {
+    const newUser = await authRepository.createUser(
+      { name, email, hashedPassword, avatarUrl: null },
+      tx,
+    );
+
+    await storageStatsRepository.create({ userId: newUser.id }, tx);
+
+    return newUser;
   });
 
   return {
