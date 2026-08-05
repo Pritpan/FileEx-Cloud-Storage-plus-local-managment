@@ -4,6 +4,9 @@
 // Responsibility: ALL database access for the File model.
 // Repositories are the ONLY layer that imports Prisma.
 //
+// MOVED FROM: src/modules/storage/repositories/file.repository.js
+// The File model is owned by the Files domain, not the Storage infrastructure.
+//
 // TRANSACTION SUPPORT:
 //   Every method accepts an optional Prisma client (`db = prisma`).
 //   This allows Services to pass a transaction client (`tx`) for atomic operations.
@@ -16,7 +19,7 @@
 //   - permanentlyDelete() only removes trashed items.
 // =============================================================================
 
-import prisma from '../../../config/prisma.js';
+import prisma from '../../config/prisma.js';
 
 // ---------------------------------------------------------------------------
 // create

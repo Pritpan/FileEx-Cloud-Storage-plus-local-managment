@@ -14,7 +14,8 @@
 // =============================================================================
 
 import express from 'express';
-import authRoutes from './modules/auth/auth.routes.js';
+import authRoutes  from './modules/auth/auth.routes.js';
+import fileRoutes  from './modules/files/index.js';
 
 const app = express();
 
@@ -43,6 +44,7 @@ app.get('/health', (_req, res) => {
 // API Routes — v1
 // Each module is mounted as it is implemented.
 // ---------------------------------------------------------------------------
-app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/auth',  authRoutes);
+app.use('/api/v1/files', fileRoutes);
 
 export default app;

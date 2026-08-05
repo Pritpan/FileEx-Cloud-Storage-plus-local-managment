@@ -13,7 +13,7 @@
 import bcrypt from 'bcrypt';
 import prisma from '../../config/prisma.js';
 import authRepository from './auth.repository.js';
-import storageStatsRepository from '../../modules/storage/repositories/storage-stats.repository.js';
+import storageStatsRepository from '../storage/storage-stats.repository.js';
 import { generateTokenPair, hashToken } from './token.service.js';
 
 const SALT_ROUNDS = 10;

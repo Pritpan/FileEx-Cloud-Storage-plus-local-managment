@@ -83,7 +83,7 @@
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/upload/initiate", "host": ["{{baseUrl}}"], "path": ["upload","initiate"] },
+            "url": { "raw": "{{baseUrl}}/files/upload/initiate", "host": ["{{baseUrl}}"], "path": ["files","upload","initiate"] },
             "body": { "mode": "raw", "raw": "{\n  \"displayName\": \"document.pdf\",\n  \"mimeType\": \"application/pdf\",\n  \"size\": 2048576,\n  \"parentId\": null\n}" }
           }
         },
@@ -92,7 +92,7 @@
           "request": {
             "method": "POST",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{baseUrl}}/upload/complete", "host": ["{{baseUrl}}"], "path": ["upload","complete"] },
+            "url": { "raw": "{{baseUrl}}/files/upload/complete", "host": ["{{baseUrl}}"], "path": ["files","upload","complete"] },
             "body": { "mode": "raw", "raw": "{\n  \"fileId\": {{fileId}}\n}" }
           }
         },
