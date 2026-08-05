@@ -16,6 +16,7 @@ import {
   CreateFolderSchema,
   RenameSchema,
   MoveSchema,
+  SearchQuerySchema,
 } from './file.schema.js';
 
 // ---------------------------------------------------------------------------
@@ -206,6 +207,88 @@ export const getPreviewUrl = async (req, res) => {
 
   const result = await handleService(res, () =>
     fileService.getPreviewUrl(id, req.user.id),
+  );
+
+  if (result) res.status(200).json(result);
+};
+
+// ---------------------------------------------------------------------------
+// DELETE /api/v1/files/:id
+// ---------------------------------------------------------------------------
+export const deleteItem = async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: 'ID must be a positive integer.' },
+    });
+  }
+
+  const result = await handleService(res, () =>
+    fileService.deleteItem(id, req.user.id),
+  );
+
+  if (result) res.status(200).json(result);
+};
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/trash
+// ---------------------------------------------------------------------------
+export const getTrash = async (req, res) => {
+  const result = await handleService(res, () =>
+    fileService.getTrash(req.user.id),
+  );
+
+  if (result) res.status(200).json(result);
+};
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/trash/:id/restore
+// ---------------------------------------------------------------------------
+export const restoreItem = async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: 'ID must be a positive integer.' },
+    });
+  }
+
+  const result = await handleService(res, () =>
+    fileService.restoreItem(id, req.user.id),
+  );
+
+  if (result) res.status(200).json(result);
+};
+
+// ---------------------------------------------------------------------------
+// DELETE /api/v1/trash/:id
+// ---------------------------------------------------------------------------
+export const permanentlyDeleteItem = async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: 'ID must be a positive integer.' },
+    });
+  }
+
+  const result = await handleService(res, () =>
+    fileService.permanentlyDeleteItem(id, req.user.id),
+  );
+
+  if (result) res.status(200).json(result);
+};
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/files/search
+// ---------------------------------------------------------------------------
+export const searchFiles = async (req, res) => {
+  const parsed = validate(SearchQuerySchema, req.query, res);
+  if (!parsed) return;
+
+  const result = await handleService(res, () =>
+    fileService.searchFiles(parsed.q, parsed.parentId, req.user.id)
   );
 
   if (result) res.status(200).json(result);

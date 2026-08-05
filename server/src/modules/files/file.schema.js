@@ -132,3 +132,29 @@ export const MoveSchema = z.object({
     .nullable()
     .default(null),
 });
+
+// ---------------------------------------------------------------------------
+// SearchQuerySchema — GET /api/v1/files/search
+// ---------------------------------------------------------------------------
+export const SearchQuerySchema = z.object({
+  q: z
+    .string({ required_error: 'Search query is required.' })
+    .trim()
+    .min(1, 'Search query must not be empty.')
+    .max(255, 'Search query must not exceed 255 characters.'),
+
+  parentId: z.preprocess(
+    (val) => {
+      if (val === undefined || val === '') return undefined;
+      if (val === 'null') return null;
+      const n = Number(val);
+      return Number.isInteger(n) && n > 0 ? n : val;
+    },
+    z
+      .number({ invalid_type_error: 'Parent ID must be a positive integer.' })
+      .int('Parent ID must be an integer.')
+      .positive('Parent ID must be a positive integer.')
+      .nullable()
+      .optional()
+  ),
+});

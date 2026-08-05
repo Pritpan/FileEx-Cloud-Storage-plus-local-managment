@@ -807,3 +807,243 @@ export const getPreviewUrl = async (id, userId) => {
     expiresIn: result.expiresIn,
   };
 };
+
+// ---------------------------------------------------------------------------
+// getActiveDescendants
+// Recursively fetches all active children and their children.
+// Used for softDelete recursion.
+// ---------------------------------------------------------------------------
+const getActiveDescendants = async (ownerId, parentId, db) => {
+  const children = await fileRepository.findChildren(ownerId, parentId, db);
+  let descendants = [...children];
+  for (const child of children) {
+    if (child.type === 'FOLDER') {
+      const childDescendants = await getActiveDescendants(ownerId, child.id, db);
+      descendants = descendants.concat(childDescendants);
+    }
+  }
+  return descendants;
+};
+
+// ---------------------------------------------------------------------------
+// getDeletedDescendants
+// Recursively fetches all soft-deleted children and their children.
+// Used for restore and permanentlyDelete recursion.
+// ---------------------------------------------------------------------------
+const getDeletedDescendants = async (ownerId, parentId, db) => {
+  const children = await fileRepository.findDeletedChildren(ownerId, parentId, db);
+  let descendants = [...children];
+  for (const child of children) {
+    if (child.type === 'FOLDER') {
+      const childDescendants = await getDeletedDescendants(ownerId, child.id, db);
+      descendants = descendants.concat(childDescendants);
+    }
+  }
+  return descendants;
+};
+
+// ---------------------------------------------------------------------------
+// deleteItem (Soft Delete)
+// Move an item and all its descendants to the trash by setting deletedAt.
+// ---------------------------------------------------------------------------
+export const deleteItem = async (id, userId) => {
+  const item = await fileRepository.findById(id);
+
+  if (!item) {
+    const deletedItem = await fileRepository.findDeletedById(id);
+    if (deletedItem && deletedItem.ownerId === userId) {
+      throw createServiceError('Item is already in trash.', 409, 'ALREADY_DELETED');
+    }
+    throw createServiceError('File or folder not found.', 404, 'FILE_NOT_FOUND');
+  }
+
+  if (item.ownerId !== userId) {
+    throw createServiceError('You do not have permission to delete this item.', 403, 'FORBIDDEN');
+  }
+
+  const now = new Date();
+
+  await prisma.$transaction(async (tx) => {
+    await fileRepository.softDelete(id, now, tx);
+
+    if (item.type === 'FOLDER') {
+      const descendants = await getActiveDescendants(userId, id, tx);
+      for (const d of descendants) {
+        await fileRepository.softDelete(d.id, now, tx);
+      }
+    }
+  });
+
+  return { success: true, message: 'Item moved to trash.' };
+};
+
+// ---------------------------------------------------------------------------
+// getTrash
+// Returns all soft-deleted items owned by the authenticated user.
+// ---------------------------------------------------------------------------
+export const getTrash = async (userId) => {
+  const items = await fileRepository.findTrash(userId);
+  return {
+    success: true,
+    data: items.map(toSafeFile),
+  };
+};
+
+// ---------------------------------------------------------------------------
+// restoreItem
+// Restore an item from the trash. If the original parent is missing,
+// restores to the root. Recursively restores all descendants.
+// ---------------------------------------------------------------------------
+export const restoreItem = async (id, userId) => {
+  const item = await fileRepository.findDeletedById(id);
+
+  if (!item) {
+    const activeItem = await fileRepository.findById(id);
+    if (activeItem && activeItem.ownerId === userId) {
+      throw createServiceError('Item is already active.', 409, 'ALREADY_ACTIVE');
+    }
+    throw createServiceError('Item not found in trash.', 404, 'FILE_NOT_FOUND');
+  }
+
+  if (item.ownerId !== userId) {
+    throw createServiceError('You do not have permission to restore this item.', 403, 'FORBIDDEN');
+  }
+
+  let restoreParentId = item.parentId;
+
+  if (restoreParentId !== null) {
+    const parent = await fileRepository.findById(restoreParentId);
+    if (!parent) {
+      restoreParentId = null;
+    }
+  }
+
+  const duplicate = await fileRepository.findActiveByName(userId, restoreParentId, item.displayName);
+  if (duplicate) {
+    throw createServiceError(
+      `A file or folder named "${item.displayName}" already exists in the destination.`,
+      409,
+      'NAME_CONFLICT'
+    );
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (restoreParentId !== item.parentId) {
+      await fileRepository.update(id, { parentId: restoreParentId }, tx);
+    }
+    
+    await fileRepository.restore(id, tx);
+
+    if (item.type === 'FOLDER') {
+      const descendants = await getDeletedDescendants(userId, id, tx);
+      for (const d of descendants) {
+        await fileRepository.restore(d.id, tx);
+      }
+    }
+  });
+
+  return { success: true, message: 'Item restored successfully.' };
+};
+
+// ---------------------------------------------------------------------------
+// permanentlyDeleteItem
+// Permanently delete a trashed item. Calls S3 to delete objects first,
+// then transactionally hard-deletes DB records and updates StorageStats.
+// ---------------------------------------------------------------------------
+export const permanentlyDeleteItem = async (id, userId) => {
+  const item = await fileRepository.findDeletedById(id);
+
+  if (!item) {
+    throw createServiceError('Item not found in trash.', 404, 'FILE_NOT_FOUND');
+  }
+
+  if (item.ownerId !== userId) {
+    throw createServiceError('You do not have permission to delete this item.', 403, 'FORBIDDEN');
+  }
+
+  let storageKeysToDelete = [];
+  let descendants = [];
+
+  if (item.type === 'FILE') {
+    if (item.storageKey) {
+      storageKeysToDelete.push(item.storageKey);
+    }
+  } else {
+    descendants = await getDeletedDescendants(userId, id);
+    for (const d of descendants) {
+      if (d.type === 'FILE' && d.storageKey) {
+        storageKeysToDelete.push(d.storageKey);
+      }
+    }
+  }
+
+  for (const key of storageKeysToDelete) {
+    try {
+      await storageService.deleteObject(key);
+    } catch (err) {
+      if (err instanceof StorageError) {
+        throw createServiceError(
+          'Storage service is temporarily unavailable. Please try again.',
+          503,
+          'STORAGE_UNAVAILABLE'
+        );
+      }
+      throw err;
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    let totalBytesToReclaim = BigInt(0);
+
+    if (item.type === 'FILE' && item.status === 'READY') {
+      totalBytesToReclaim += BigInt(item.size);
+    }
+
+    const bottomUp = [...descendants].reverse();
+
+    for (const d of bottomUp) {
+      if (d.type === 'FILE' && d.status === 'READY') {
+        totalBytesToReclaim += BigInt(d.size);
+      }
+      await fileRepository.permanentlyDelete(d.id, tx);
+    }
+
+    await fileRepository.permanentlyDelete(item.id, tx);
+
+    if (totalBytesToReclaim > BigInt(0)) {
+      await storageStatsRepository.decrementStorage(userId, totalBytesToReclaim, tx);
+    }
+  });
+
+  return { success: true, message: 'Item permanently deleted.' };
+};
+
+// ---------------------------------------------------------------------------
+// searchFiles
+// Searches for active files and folders within a parent (or the root).
+// If parentId is undefined, searches the entire drive.
+// ---------------------------------------------------------------------------
+export const searchFiles = async (query, parentId, userId) => {
+  if (parentId !== null && parentId !== undefined) {
+    const parent = await fileRepository.findById(parentId);
+
+    if (!parent) {
+      throw createServiceError('Parent folder not found.', 404, 'FOLDER_NOT_FOUND');
+    }
+
+    if (parent.ownerId !== userId) {
+      throw createServiceError('Parent folder belongs to another user.', 403, 'FORBIDDEN');
+    }
+
+    if (parent.type !== 'FOLDER') {
+      throw createServiceError('The specified parent is not a folder.', 422, 'VALIDATION_ERROR');
+    }
+  }
+
+  const items = await fileRepository.search(userId, query, parentId);
+
+  return {
+    success: true,
+    data: items.map(toSafeFile),
+  };
+};

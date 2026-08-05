@@ -50,6 +50,13 @@ router.post('/upload/complete', authenticate, fileController.completeUpload);
 router.get('/', authenticate, fileController.listFiles);
 
 // ---------------------------------------------------------------------------
+// GET /api/v1/files/search
+//
+// Searches active files and folders by displayName.
+// ---------------------------------------------------------------------------
+router.get('/search', authenticate, fileController.searchFiles);
+
+// ---------------------------------------------------------------------------
 // POST /api/v1/files/folders
 //
 // Creates a new folder. parentId null = create in virtual root.
@@ -87,5 +94,36 @@ router.get('/:id/download-url', authenticate, fileController.getDownloadUrl);
 // Kept separate for future preview-specific behaviour (inline disposition, etc.)
 // ---------------------------------------------------------------------------
 router.get('/:id/preview-url', authenticate, fileController.getPreviewUrl);
+
+// ---------------------------------------------------------------------------
+// DELETE /api/v1/files/:id
+//
+// Soft deletes a file or folder (moves to trash).
+// If a folder, recursively soft deletes all descendants.
+// ---------------------------------------------------------------------------
+router.delete('/:id', authenticate, fileController.deleteItem);
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/trash
+//
+// Lists all items in the trash (soft-deleted items).
+// ---------------------------------------------------------------------------
+router.get('/trash', authenticate, fileController.getTrash);
+
+// ---------------------------------------------------------------------------
+// POST /api/v1/trash/:id/restore
+//
+// Restores an item from the trash.
+// If a folder, recursively restores all descendants.
+// ---------------------------------------------------------------------------
+router.post('/trash/:id/restore', authenticate, fileController.restoreItem);
+
+// ---------------------------------------------------------------------------
+// DELETE /api/v1/trash/:id
+//
+// Permanently deletes an item from the trash.
+// Deletes S3 objects and updates StorageStats.
+// ---------------------------------------------------------------------------
+router.delete('/trash/:id', authenticate, fileController.permanentlyDeleteItem);
 
 export default router;

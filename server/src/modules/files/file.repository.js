@@ -137,6 +137,41 @@ const findActiveByName = async (ownerId, parentId, displayName, db = prisma) => 
 };
 
 // ---------------------------------------------------------------------------
+// findTrash
+// Returns all soft-deleted items for a user.
+// Ordering: Most recently deleted first.
+// ---------------------------------------------------------------------------
+const findTrash = async (ownerId, db = prisma) => {
+  return db.file.findMany({
+    where: {
+      ownerId,
+      deletedAt: { not: null },
+    },
+    orderBy: {
+      deletedAt: 'desc',
+    },
+  });
+};
+
+// ---------------------------------------------------------------------------
+// findDeletedChildren
+// Returns deleted children for a specific folder.
+// Used for recursive operations (softDelete, restore, permanentlyDelete) on
+// already deleted sub-items.
+// Wait, for soft delete, we need to find active children to delete them.
+// `findChildren` finds active. `findDeletedChildren` finds deleted.
+// ---------------------------------------------------------------------------
+const findDeletedChildren = async (ownerId, parentId, db = prisma) => {
+  return db.file.findMany({
+    where: {
+      ownerId,
+      parentId,
+      deletedAt: { not: null },
+    },
+  });
+};
+
+// ---------------------------------------------------------------------------
 // update
 // Generic update method for a single file or folder.
 // SAFETY: Only updates active records. Returns null if already deleted.
@@ -200,6 +235,34 @@ const permanentlyDelete = async (id, db = prisma) => {
 };
 
 // ---------------------------------------------------------------------------
+// search
+// Searches for active files and folders by partial displayName match.
+// MySQL handles case-insensitivity natively via collation, so mode: "insensitive"
+// is omitted to avoid Prisma errors on MySQL providers.
+// ---------------------------------------------------------------------------
+const search = async (ownerId, query, parentId, db = prisma) => {
+  const whereClause = {
+    ownerId,
+    deletedAt: null,
+    displayName: {
+      contains: query,
+    },
+  };
+
+  if (parentId !== undefined) {
+    whereClause.parentId = parentId;
+  }
+
+  return db.file.findMany({
+    where: whereClause,
+    orderBy: [
+      { type: 'desc' }, // Folders first
+      { displayName: 'asc' },
+    ],
+  });
+};
+
+// ---------------------------------------------------------------------------
 // Export
 // ---------------------------------------------------------------------------
 const fileRepository = {
@@ -210,6 +273,9 @@ const fileRepository = {
   findRootItems,
   findChildren,
   findActiveByName,
+  findTrash,
+  findDeletedChildren,
+  search,
   update,
   softDelete,
   restore,
