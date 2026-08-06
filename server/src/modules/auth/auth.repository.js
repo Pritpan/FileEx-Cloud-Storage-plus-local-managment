@@ -32,6 +32,12 @@ const SAFE_USER_SELECT = {
   avatarUrl: true,
   createdAt: true,
   updatedAt: true,
+  storageStats: {
+    select: {
+      usedStorage: true,
+      storageLimit: true,
+    },
+  },
   // hashedPassword intentionally omitted
 };
 
@@ -57,6 +63,12 @@ const findUserByEmail = async (email, db = prisma) => {
       avatarUrl:      true,
       createdAt:      true,
       updatedAt:      true,
+      storageStats: {
+        select: {
+          usedStorage: true,
+          storageLimit: true,
+        },
+      },
     },
   });
 };

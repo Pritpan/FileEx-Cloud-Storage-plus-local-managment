@@ -49,6 +49,27 @@ const handleService = async (res, fn) => {
 };
 
 // ---------------------------------------------------------------------------
+// Cookie Helpers
+// ---------------------------------------------------------------------------
+const setRefreshCookie = (res, refreshToken) => {
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/api/v1/auth/refresh', // Keep it scoped strictly to the refresh endpoint
+  });
+};
+
+const clearRefreshCookie = (res) => {
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/api/v1/auth/refresh',
+  });
+};
+
+// ---------------------------------------------------------------------------
 // POST /api/v1/auth/register
 // ---------------------------------------------------------------------------
 export const register = async (req, res) => {
@@ -56,7 +77,11 @@ export const register = async (req, res) => {
   if (!ok) return res.status(400).json(response);
 
   const result = await handleService(res, () => authService.register(data));
-  if (result) res.status(201).json(result);
+  if (result) {
+    setRefreshCookie(res, result.data.refreshToken);
+    delete result.data.refreshToken;
+    res.status(201).json(result);
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -67,28 +92,50 @@ export const login = async (req, res) => {
   if (!ok) return res.status(400).json(response);
 
   const result = await handleService(res, () => authService.login(data));
-  if (result) res.status(200).json(result);
+  if (result) {
+    setRefreshCookie(res, result.data.refreshToken);
+    delete result.data.refreshToken;
+    res.status(200).json(result);
+  }
 };
 
 // ---------------------------------------------------------------------------
 // POST /api/v1/auth/refresh
 // ---------------------------------------------------------------------------
 export const refresh = async (req, res) => {
-  const { ok, data, response } = validate(RefreshSchema, req.body);
-  if (!ok) return res.status(400).json(response);
+  const refreshToken = req.cookies?.refreshToken;
+  
+  if (!refreshToken) {
+    return res.status(401).json({
+      success: false,
+      error: { code: 'MISSING_TOKEN', message: 'Refresh token is missing.' },
+    });
+  }
 
-  const result = await handleService(res, () => authService.refresh(data.refreshToken));
-  if (result) res.status(200).json(result);
+  const result = await handleService(res, () => authService.refresh(refreshToken));
+  if (result) {
+    setRefreshCookie(res, result.data.refreshToken);
+    delete result.data.refreshToken;
+    res.status(200).json(result);
+  }
 };
 
 // ---------------------------------------------------------------------------
 // POST /api/v1/auth/logout
 // ---------------------------------------------------------------------------
 export const logout = async (req, res) => {
-  const { refreshToken } = req.body;
+  const refreshToken = req.cookies?.refreshToken;
 
-  const result = await handleService(res, () => authService.logout(refreshToken));
-  if (result) res.status(200).json(result);
+  if (refreshToken) {
+    try {
+      await authService.logout(refreshToken);
+    } catch (err) {
+      // Ignore DB errors (e.g. token already revoked) — we still want to clear the cookie.
+    }
+  }
+
+  clearRefreshCookie(res);
+  res.status(200).json({ success: true, message: 'Logged out successfully.' });
 };
 
 // ---------------------------------------------------------------------------

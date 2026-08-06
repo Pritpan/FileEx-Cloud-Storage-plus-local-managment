@@ -22,7 +22,14 @@ const SALT_ROUNDS = 10;
 // sanitiseUser — strip hashedPassword before returning user data.
 // This function must be called every time a user object leaves the service.
 // ---------------------------------------------------------------------------
-const sanitiseUser = ({ hashedPassword: _, ...safe }) => safe;
+const sanitiseUser = (user) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  avatar: user.avatarUrl,
+  storageUsed: user.storageStats ? Number(user.storageStats.usedStorage) : 0,
+  storageLimit: user.storageStats ? Number(user.storageStats.storageLimit) : 104857600,
+});
 
 // ---------------------------------------------------------------------------
 // createServiceError — produce a typed error the controller can inspect.
@@ -79,10 +86,18 @@ export const register = async ({ name, email, password }) => {
     return newUser;
   });
 
+  // Step 4 — Generate tokens
+  const { accessToken, rawRefreshToken, tokenHash, expiresAt } = generateTokenPair(user);
+  await authRepository.saveRefreshToken({ userId: user.id, tokenHash, expiresAt });
+
   return {
     success: true,
-    message: 'User registered successfully.',
-    data: sanitiseUser(user),
+    message: 'Registration successful',
+    data: {
+      user: sanitiseUser(user),
+      accessToken,
+      refreshToken: rawRefreshToken,
+    },
   };
 };
 
@@ -154,6 +169,7 @@ export const refresh = async (rawRefreshToken) => {
   return {
     success: true,
     data: {
+      user: sanitiseUser(user),
       accessToken,
       refreshToken: newRawRefreshToken,
     },

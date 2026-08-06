@@ -17,17 +17,7 @@ export default defineConfig({
     },
   },
 
-  server: {
-    port: 5173,
-    // Proxy API calls to the backend in development.
-    // This avoids CORS issues and keeps the frontend decoupled from backend port.
-    proxy: {
-      '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:3000',
-        changeOrigin: true,
-      },
-    },
-  },
+ 
 
   build: {
     outDir: 'dist',

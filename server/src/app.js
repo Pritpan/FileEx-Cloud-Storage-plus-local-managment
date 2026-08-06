@@ -14,10 +14,35 @@
 // =============================================================================
 
 import express from 'express';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import authRoutes  from './modules/auth/auth.routes.js';
 import fileRoutes  from './modules/files/index.js';
 
 const app = express();
+
+// ---------------------------------------------------------------------------
+// CORS
+// Must be registered before any routes.
+// `credentials: true` is required for the browser to send the HttpOnly
+// refresh token cookie on cross-origin requests.
+// ---------------------------------------------------------------------------
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = process.env.CLIENT_ORIGIN ? [process.env.CLIENT_ORIGIN] : [];
+    
+    // Allow any localhost or 127.0.0.1 origin for local development
+    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:') || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
 
 // ---------------------------------------------------------------------------
 // Body Parsers
@@ -26,6 +51,9 @@ const app = express();
 // Parse incoming JSON request bodies.
 // Sets req.body for Content-Type: application/json requests.
 app.use(express.json());
+
+// Parse cookies (e.g. HttpOnly refresh tokens)
+app.use(cookieParser());
 
 // Parse URL-encoded form data (e.g., HTML form submissions).
 // extended: false uses the native querystring library — sufficient for this app.

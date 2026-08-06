@@ -1,40 +1,30 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import AppRouter from '@/routes/AppRouter';
+import { useAuthStore } from '@/store';
+import { authService } from '@/features/auth';
 
 /**
- * App — Root route tree.
- *
- * Routes are registered here as features are built in subsequent chunks.
- * The architecture document defines the full routing structure:
- *
- *   /                    → redirect to /dashboard
- *   /login               → Login page
- *   /register            → Register page
- *   /dashboard           → Storage overview
- *   /explorer            → Root cloud storage
- *   /explorer/:folderId  → Folder contents
- *   /trash               → Recycle Bin
- *   /favorites           → Starred files
- *   /search              → Search results
- *   /settings/*          → Settings pages
- *
- * See: docs/ARCHITECTURE.md §3.2
+ * App — Root component.
+ * Handles one-time session restoration on mount.
  */
 function App() {
-  return (
-    <Routes>
-      {/* Temporary placeholder — routes will be wired in feature chunks */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route
-        path="*"
-        element={
-          <div style={{ padding: '2rem', fontFamily: 'system-ui' }}>
-            <h1>Fileex</h1>
-            <p>Foundation ready. Routes will be registered in the next chunk.</p>
-          </div>
-        }
-      />
-    </Routes>
-  );
+  const { setAuth, clearAuth } = useAuthStore();
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const data = await authService.refresh();
+        setAuth(data.user, data.accessToken);
+      } catch (error) {
+        // Refresh token is missing, expired, or invalid.
+        clearAuth();
+      }
+    };
+    
+    restoreSession();
+  }, [setAuth, clearAuth]);
+
+  return <AppRouter />;
 }
 
 export default App;
