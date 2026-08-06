@@ -477,15 +477,17 @@ export const createFolder = async ({ displayName, parentId }, userId) => {
   }
 
   // ── Step 3: Create folder record ─────────────────────────────────────────
+  // uploadStartedAt is explicitly null — folders have no upload lifecycle.
   const folder = await fileRepository.create({
-    ownerId:    userId,
+    ownerId:         userId,
     parentId,
     displayName,
-    type:       'FOLDER',
-    status:     'READY',
-    size:       BigInt(0),
-    storageKey: null,
-    mimeType:   null,
+    type:            'FOLDER',
+    status:          'READY',
+    size:            BigInt(0),
+    storageKey:      null,
+    mimeType:        null,
+    uploadStartedAt: null,
   });
 
   return {
