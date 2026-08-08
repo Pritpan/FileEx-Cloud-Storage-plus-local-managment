@@ -49,3 +49,15 @@ export const RefreshSchema = z.object({
     .string({ required_error: 'Refresh token is required.' })
     .min(1, 'Refresh token is required.'),
 });
+
+// -----------------------------------------------------------------------------
+// UpdateProfileSchema — PATCH /api/v1/auth/me
+// -----------------------------------------------------------------------------
+export const UpdateProfileSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(3, 'Name must be at least 3 characters.')
+    .max(100, 'Name must not exceed 100 characters.')
+    .optional(),
+});

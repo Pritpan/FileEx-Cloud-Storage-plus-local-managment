@@ -57,6 +57,14 @@ router.get('/', authenticate, fileController.listFiles);
 router.get('/search', authenticate, fileController.searchFiles);
 
 // ---------------------------------------------------------------------------
+// GET /api/v1/files/recent
+//
+// Returns the 20 most recently uploaded files for the authenticated user.
+// Must be declared before /:id to prevent 'recent' being treated as an id.
+// ---------------------------------------------------------------------------
+router.get('/recent', authenticate, fileController.getRecentFiles);
+
+// ---------------------------------------------------------------------------
 // POST /api/v1/files/folders
 //
 // Creates a new folder. parentId null = create in virtual root.
@@ -94,6 +102,13 @@ router.get('/:id/download-url', authenticate, fileController.getDownloadUrl);
 // Kept separate for future preview-specific behaviour (inline disposition, etc.)
 // ---------------------------------------------------------------------------
 router.get('/:id/preview-url', authenticate, fileController.getPreviewUrl);
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/files/:id/properties
+//
+// Returns properties/metadata for a single file or folder.
+// ---------------------------------------------------------------------------
+router.get('/:id/properties', authenticate, fileController.getProperties);
 
 // ---------------------------------------------------------------------------
 // DELETE /api/v1/files/:id

@@ -1,4 +1,4 @@
-import { LogOut, Search } from 'lucide-react';
+import { LogOut, Moon, Sun, Menu } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,13 +9,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useAuthStore } from '@/store';
+import { useAuthStore, useThemeStore, useUIStore } from '@/store';
 import { authService } from '@/features/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
+const getInitials = (name) => {
+  if (!name) return 'U';
+  return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+};
+
 export function Header() {
   const { user, clearAuth } = useAuthStore();
+  const { theme, toggleTheme } = useThemeStore();
+  const { toggleSidebar } = useUIStore();
   const queryClient = useQueryClient();
 
   const handleLogout = async () => {
@@ -24,35 +31,45 @@ export function Header() {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      queryClient.clear(); // Clear all cached data
-      clearAuth(); // Remove user and token
+      queryClient.clear();
+      clearAuth();
       toast.success('Logged out successfully');
     }
   };
 
-  // Get user initials for avatar fallback
-  const getInitials = (name) => {
-    if (!name) return 'U';
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-  };
-
   return (
-    <header className="h-14 border-b border-surface-200 bg-surface-0 dark:bg-surface-900 dark:border-surface-800 flex items-center justify-between px-4 lg:px-6">
-      {/* Search / Context Area */}
-      <div className="flex flex-1 items-center gap-4">
-        {/* Mobile menu trigger could go here later */}
-      </div>
+    <header className="h-14 border-b border-surface-200 bg-surface-0 dark:bg-surface-900 dark:border-surface-800 flex items-center justify-between px-3 lg:px-4 shrink-0">
+      {/* Left side empty or reserved for future elements */}
+      <div className="flex items-center gap-2"></div>
 
-      {/* User Area */}
-      <div className="flex items-center gap-4">
+      {/* Right — theme + user */}
+      <div className="flex items-center gap-2">
+        {/* Dark mode toggle */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={toggleTheme}
+          className="h-8 w-8 text-surface-500 hover:text-surface-900 dark:hover:text-surface-100"
+          aria-label="Toggle dark mode"
+        >
+          {theme === 'dark'
+            ? <Sun className="w-4 h-4" />
+            : <Moon className="w-4 h-4" />
+          }
+        </Button>
+
+        {/* User avatar + dropdown */}
         <DropdownMenu>
-          <DropdownMenuTrigger className="relative h-8 w-8 rounded-full outline-none ring-offset-surface-0 focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+          <DropdownMenuTrigger className="flex items-center gap-2.5 outline-none rounded-full focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0 dark:focus-visible:ring-offset-surface-900">
             <Avatar className="h-8 w-8 hover:opacity-80 transition-opacity">
-              <AvatarImage src="" alt={user?.name || "User"} />
-              <AvatarFallback className="bg-brand-100 text-brand-700">
+              <AvatarImage src="" alt={user?.name || 'User'} />
+              <AvatarFallback className="bg-brand-100 text-brand-700 font-semibold text-sm">
                 {getInitials(user?.name)}
               </AvatarFallback>
             </Avatar>
+            <span className="hidden lg:block text-sm font-medium text-surface-800 dark:text-surface-200 max-w-[120px] truncate">
+              {user?.name || 'User'}
+            </span>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end">
             <DropdownMenuLabel className="font-normal">
@@ -64,7 +81,7 @@ export function Header() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={handleLogout}
               className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950 cursor-pointer"
             >

@@ -23,11 +23,13 @@ export const FILES = {
   UPLOAD_COMPLETE: '/files/upload/complete',
   LIST:            '/files',
   SEARCH:          '/files/search',
+  RECENT:          '/files/recent',
   FOLDERS:         '/files/folders',
   RENAME:          (id) => `/files/${id}/rename`,
   MOVE:            (id) => `/files/${id}/move`,
   DOWNLOAD_URL:    (id) => `/files/${id}/download-url`,
   PREVIEW_URL:     (id) => `/files/${id}/preview-url`,
+  PROPERTIES:      (id) => `/files/${id}/properties`,
   DELETE:          (id) => `/files/${id}`,
 };
 

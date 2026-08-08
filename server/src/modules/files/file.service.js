@@ -1049,3 +1049,53 @@ export const searchFiles = async (query, parentId, userId) => {
     data: items.map(toSafeFile),
   };
 };
+
+// ---------------------------------------------------------------------------
+// getRecentFiles
+// Returns the 20 most recently uploaded files for the authenticated user.
+// ---------------------------------------------------------------------------
+export const getRecentFiles = async (userId) => {
+  const items = await fileRepository.findRecent(userId, 20);
+  return {
+    success: true,
+    data: items.map(toSafeFile),
+  };
+};
+
+// ---------------------------------------------------------------------------
+// getProperties
+// Returns properties/metadata for a single file or folder.
+// ---------------------------------------------------------------------------
+export const getProperties = async (id, userId) => {
+  const item = await fileRepository.findById(id);
+
+  if (!item) {
+    throw createServiceError('Item not found.', 404, 'NOT_FOUND');
+  }
+
+  if (item.ownerId !== userId) {
+    throw createServiceError('You do not have permission to view this item.', 403, 'FORBIDDEN');
+  }
+
+  let childrenCount = 0;
+  let foldersCount = 0;
+  let filesCount = 0;
+
+  if (item.type === 'FOLDER') {
+    const children = await fileRepository.findChildren(userId, id);
+    childrenCount = children.length;
+    foldersCount = children.filter((c) => c.type === 'FOLDER').length;
+    filesCount = children.filter((c) => c.type !== 'FOLDER').length;
+  }
+
+  return {
+    success: true,
+    data: {
+      ...toSafeFile(item),
+      childrenCount,
+      foldersCount,
+      filesCount,
+    }
+  };
+};
+

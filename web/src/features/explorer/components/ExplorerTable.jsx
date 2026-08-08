@@ -1,5 +1,5 @@
 import { getItemIcon, formatBytes, formatDate } from './ExplorerItem';
-import { Pencil, FolderInput, Trash2, MoreVertical, Eye, Download } from 'lucide-react';
+import { Pencil, FolderInput, Trash2, MoreVertical, Eye, Download, FileText } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -22,7 +22,7 @@ import { Button } from '@/components/ui/button';
  *
  * @param {{ items, onRename, onMove, onDelete }} props
  */
-export function ExplorerTable({ items, onRename, onMove, onDelete, onDoubleClick, onPreview, onDownload }) {
+export function ExplorerTable({ items, onRename, onMove, onDelete, onProperties, onDoubleClick, onPreview, onDownload }) {
   return (
     <div className="px-6 py-4">
       <div className="border border-surface-200 dark:border-surface-800 rounded-md bg-surface-0 dark:bg-surface-900">
@@ -86,6 +86,11 @@ export function ExplorerTable({ items, onRename, onMove, onDelete, onDoubleClick
                       <DropdownMenuItem onClick={() => onMove(item)}>
                         <FolderInput className="w-4 h-4 mr-2" />
                         Move
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => onProperties(item)}>
+                        <FileText className="w-4 h-4 mr-2" />
+                        Properties
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem

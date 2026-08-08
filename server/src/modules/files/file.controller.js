@@ -213,6 +213,25 @@ export const getPreviewUrl = async (req, res) => {
 };
 
 // ---------------------------------------------------------------------------
+// GET /api/v1/files/:id/properties
+// ---------------------------------------------------------------------------
+export const getProperties = async (req, res) => {
+  const id = parseId(req.params.id);
+  if (!id) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'VALIDATION_ERROR', message: 'ID must be a positive integer.' },
+    });
+  }
+
+  const result = await handleService(res, () =>
+    fileService.getProperties(id, req.user.id),
+  );
+
+  if (result) res.status(200).json(result);
+};
+
+// ---------------------------------------------------------------------------
 // DELETE /api/v1/files/:id
 // ---------------------------------------------------------------------------
 export const deleteItem = async (req, res) => {
@@ -293,3 +312,15 @@ export const searchFiles = async (req, res) => {
 
   if (result) res.status(200).json(result);
 };
+
+// ---------------------------------------------------------------------------
+// GET /api/v1/files/recent
+// ---------------------------------------------------------------------------
+export const getRecentFiles = async (req, res) => {
+  const result = await handleService(res, () =>
+    fileService.getRecentFiles(req.user.id),
+  );
+
+  if (result) res.status(200).json(result);
+};
+

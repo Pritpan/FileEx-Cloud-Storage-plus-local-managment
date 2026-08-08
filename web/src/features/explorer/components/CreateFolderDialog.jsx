@@ -68,6 +68,7 @@ export function CreateFolderDialog({ open, onOpenChange, currentFolderId }) {
               id="folder-name"
               placeholder="e.g. My Project"
               autoComplete="off"
+              className="text-surface-900 dark:text-surface-100"
               {...register('displayName', {
                 required: 'Folder name is required.',
                 maxLength: { value: 255, message: 'Name must not exceed 255 characters.' },

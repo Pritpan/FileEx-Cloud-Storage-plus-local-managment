@@ -38,10 +38,10 @@ export const formatDate = (dateString) => {
  * @param {string} size - Tailwind size class (e.g. 'w-10 h-10')
  */
 export const getItemIcon = (item, size = 'w-10 h-10') => {
-  if (item.type === 'FOLDER') {
+  if (item?.type === 'FOLDER') {
     return <Folder className={`${size} text-brand-500 fill-brand-100 dark:fill-brand-900/30`} />;
   }
-  const name = item.displayName || '';
+  const name = item?.displayName || '';
   if (name.endsWith('.pdf')) return <FileText className={`${size} text-red-500`} />;
   if (name.endsWith('.xlsx') || name.endsWith('.xls')) return <FileSpreadsheet className={`${size} text-green-500`} />;
   if (/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(name)) return <Image className={`${size} text-blue-500`} />;
@@ -51,7 +51,7 @@ export const getItemIcon = (item, size = 'w-10 h-10') => {
 /**
  * ItemActions — the three-dot dropdown menu for file operations.
  */
-function ItemActions({ item, onRename, onMove, onDelete, onPreview, onDownload }) {
+function ItemActions({ item, onRename, onMove, onDelete, onProperties, onPreview, onDownload }) {
   const isFile = item.type !== 'FOLDER';
   return (
     <DropdownMenu>
@@ -85,6 +85,11 @@ function ItemActions({ item, onRename, onMove, onDelete, onPreview, onDownload }
           Move
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => onProperties(item)}>
+          <FileText className="w-4 h-4 mr-2" />
+          Properties
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={() => onDelete(item)}
           className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
@@ -102,7 +107,7 @@ function ItemActions({ item, onRename, onMove, onDelete, onPreview, onDownload }
  *
  * @param {{ item, onRename, onMove, onDelete }} props
  */
-export function ExplorerItem({ item, onRename, onMove, onDelete, onDoubleClick, onPreview, onDownload }) {
+export function ExplorerItem({ item, onRename, onMove, onDelete, onProperties, onDoubleClick, onPreview, onDownload }) {
   const subtitle = item.type === 'FOLDER'
     ? formatDate(item.updatedAt)
     : formatBytes(item.size);
@@ -113,7 +118,7 @@ export function ExplorerItem({ item, onRename, onMove, onDelete, onDoubleClick, 
       onDoubleClick={() => onDoubleClick && onDoubleClick(item)}
     >
       {/* Action menu — appears on hover */}
-      <ItemActions item={item} onRename={onRename} onMove={onMove} onDelete={onDelete} onPreview={onPreview} onDownload={onDownload} />
+      <ItemActions item={item} onRename={onRename} onMove={onMove} onDelete={onDelete} onProperties={onProperties} onPreview={onPreview} onDownload={onDownload} />
 
       <div className="mb-4 transition-transform group-hover:scale-105">
         {getItemIcon(item)}

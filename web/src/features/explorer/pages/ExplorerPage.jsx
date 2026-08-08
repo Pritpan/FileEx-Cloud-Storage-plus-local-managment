@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useUIStore } from '@/store';
 import { Toolbar } from '../components/Toolbar';
 import { BreadcrumbNav } from '../components/BreadcrumbNav';
 import { ExplorerGrid } from '../components/ExplorerGrid';
@@ -11,6 +12,7 @@ import { CreateFolderDialog } from '../components/CreateFolderDialog';
 import { RenameDialog } from '../components/RenameDialog';
 import { MoveDialog } from '../components/MoveDialog';
 import { DeleteDialog } from '../components/DeleteDialog';
+import { PropertiesDialog } from '../components/PropertiesDialog';
 import { useFiles } from '../hooks/useFiles';
 import { UploadDropzone } from '@/features/upload/components/UploadDropzone';
 import { UploadQueue } from '@/features/upload/components/UploadQueue';
@@ -26,6 +28,7 @@ export function ExplorerPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [viewMode, setViewMode] = useState('grid');
+  const setUploadDrawerOpen = useUIStore((s) => s.setUploadDrawerOpen);
 
   // folderId from URL param is always a string; convert to number or null for root.
   const currentFolderId = folderId ? parseInt(folderId, 10) : null;
@@ -58,11 +61,13 @@ export function ExplorerPage() {
   const [renameState, setRenameState] = useState({ open: false, item: null });
   const [moveState, setMoveState] = useState({ open: false, item: null });
   const [deleteState, setDeleteState] = useState({ open: false, item: null });
+  const [propertiesState, setPropertiesState] = useState({ open: false, item: null });
 
   // ── Action handlers (passed down to grid/table) ───────────────────────────
   const handleRename = (item) => setRenameState({ open: true, item });
   const handleMove = (item) => setMoveState({ open: true, item });
   const handleDelete = (item) => setDeleteState({ open: true, item });
+  const handleProperties = (item) => setPropertiesState({ open: true, item });
 
   // ── Preview & Download ────────────────────────────────────────────────────
   const { open: previewOpen, item: previewItem, previewUrl, isLoading: previewLoading, isError: previewError, openPreview, closePreview } = usePreview();
@@ -95,6 +100,7 @@ export function ExplorerPage() {
     onRename: handleRename,
     onMove: handleMove,
     onDelete: handleDelete,
+    onProperties: handleProperties,
     onDoubleClick: handleItemDoubleClick,
     onPreview: openPreview,
     onDownload: downloadFile,
@@ -124,7 +130,12 @@ export function ExplorerPage() {
     // Normal explorer mode
     if (isLoading) return <LoadingSkeleton viewMode={viewMode} />;
     if (isError)   return <ErrorState message={errorMessage} onRetry={refetch} />;
-    if (files.length === 0) return <EmptyState />;
+    if (files.length === 0) return (
+      <EmptyState 
+        onNewFolder={() => setCreateFolderOpen(true)} 
+        currentFolderId={currentFolderId} 
+      />
+    );
 
     return viewMode === 'grid' ? (
       <ExplorerGrid items={files} {...explorerActionProps} />
@@ -185,6 +196,12 @@ export function ExplorerPage() {
         onOpenChange={(open) => setDeleteState((s) => ({ ...s, open }))}
         item={deleteState.item}
         currentFolderId={currentFolderId}
+      />
+
+      <PropertiesDialog
+        open={propertiesState.open}
+        onOpenChange={(open) => setPropertiesState((s) => ({ ...s, open }))}
+        item={propertiesState.item}
       />
 
       <PreviewDialog

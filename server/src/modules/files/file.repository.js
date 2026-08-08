@@ -277,6 +277,22 @@ const countByType = async (ownerId, type, db = prisma) => {
 };
 
 // ---------------------------------------------------------------------------
+// findRecent
+// Returns the N most recently created active files (not folders) for a user.
+// ---------------------------------------------------------------------------
+const findRecent = async (ownerId, limit = 20, db = prisma) => {
+  return db.file.findMany({
+    where: {
+      ownerId,
+      type: 'FILE',
+      deletedAt: null,
+    },
+    orderBy: { createdAt: 'desc' },
+    take: limit,
+  });
+};
+
+// ---------------------------------------------------------------------------
 // Export
 // ---------------------------------------------------------------------------
 const fileRepository = {
@@ -295,6 +311,7 @@ const fileRepository = {
   restore,
   permanentlyDelete,
   countByType,
+  findRecent,
 };
 
 export default fileRepository;

@@ -30,6 +30,16 @@ export const explorerService = {
     return data.data.items;
   },
 
+  /**
+   * Fetches properties/metadata for a single file or folder.
+   * @param {number} id - The ID of the item.
+   * @returns {Promise<object>} - The item with extended properties.
+   */
+  getProperties: async (id) => {
+    const { data } = await api.get(FILES.PROPERTIES(id));
+    return data.data;
+  },
+
   // ── Mutations ─────────────────────────────────────────────────────────────
 
   /**

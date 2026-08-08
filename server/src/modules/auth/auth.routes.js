@@ -18,6 +18,7 @@ router.post('/refresh',  authController.refresh);
 router.post('/logout',   authController.logout);
 
 // Protected routes — valid access token required
-router.get('/me', authenticate, authController.getMe);
+router.get('/me',    authenticate, authController.getMe);
+router.patch('/me',  authenticate, authController.updateMe);
 
 export default router;

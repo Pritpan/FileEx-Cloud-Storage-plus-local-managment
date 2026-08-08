@@ -10,6 +10,8 @@ import RegisterPage from '@/features/auth/pages/RegisterPage';
 import { ExplorerPage } from '@/features/explorer/pages/ExplorerPage';
 import { TrashPage } from '@/features/trash/pages/TrashPage';
 import { StoragePage } from '@/features/storage/pages/StoragePage';
+import { SettingsPage } from '@/features/profile/pages/SettingsPage';
+import { RecentPage } from '@/features/recent/pages/RecentPage';
 
 /**
  * AppRouter — Central route tree.
@@ -32,9 +34,10 @@ function AppRouter() {
           {/* Feature pages registered here as implemented */}
           <Route path="/explorer"              element={<ExplorerPage />} />
           <Route path="/explorer/:folderId"    element={<ExplorerPage />} />
+          <Route path="/recent"                element={<RecentPage />} />
           <Route path="/trash"                 element={<TrashPage />} />
           <Route path="/storage"               element={<StoragePage />} />
-          {/* <Route path="/settings/*"            element={<SettingsPage />} /> */}
+          <Route path="/settings"              element={<SettingsPage />} />
         </Route>
       </Route>
     </Routes>

@@ -6,7 +6,7 @@
 // =============================================================================
 
 import * as authService from './auth.service.js';
-import { RegisterSchema, LoginSchema, RefreshSchema } from './auth.schema.js';
+import { RegisterSchema, LoginSchema, RefreshSchema, UpdateProfileSchema } from './auth.schema.js';
 
 // ---------------------------------------------------------------------------
 // Reusable: parse a Zod schema against req.body and return the result.
@@ -147,4 +147,18 @@ export const getMe = async (req, res) => {
     success: true,
     data: { user: req.user },
   });
+};
+
+// ---------------------------------------------------------------------------
+// PATCH /api/v1/auth/me  (protected)
+// ---------------------------------------------------------------------------
+export const updateMe = async (req, res) => {
+  const { ok, data, response } = validate(UpdateProfileSchema, req.body);
+  if (!ok) return res.status(400).json(response);
+
+  const result = await handleService(res, () =>
+    authService.updateProfile(req.user.id, data),
+  );
+
+  if (result) res.status(200).json(result);
 };

@@ -106,6 +106,18 @@ const createUser = async ({ name, email, hashedPassword, avatarUrl = null }, db 
 };
 
 // ---------------------------------------------------------------------------
+// updateUser
+// Updates mutable user fields (name, avatarUrl) by ID.
+// ---------------------------------------------------------------------------
+const updateUser = async (id, data, db = prisma) => {
+  return db.user.update({
+    where: { id },
+    data,
+    select: SAFE_USER_SELECT,
+  });
+};
+
+// ---------------------------------------------------------------------------
 // saveRefreshToken
 //
 // Stores a SHA-256 hash of the raw refresh token.
@@ -170,6 +182,7 @@ const authRepository = {
   findUserByEmail,
   findUserById,
   createUser,
+  updateUser,
   saveRefreshToken,
   findRefreshToken,
   deleteRefreshToken,

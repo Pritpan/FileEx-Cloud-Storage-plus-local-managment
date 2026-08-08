@@ -9,13 +9,16 @@ import { create } from 'zustand';
  * Do not store feature-specific state here — keep it in feature-local state.
  */
 const useUIStore = create((set) => ({
-  isSidebarOpen:   true,
-  isUploadDrawerOpen: false,
+  // Sidebar
+  sidebarCollapsed:    false,
+  toggleSidebar:       ()      => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  collapseSidebar:     ()      => set({ sidebarCollapsed: true }),
+  expandSidebar:       ()      => set({ sidebarCollapsed: false }),
 
-  toggleSidebar:       ()      => set((s) => ({ isSidebarOpen: !s.isSidebarOpen })),
-  setSidebarOpen:      (open)  => set({ isSidebarOpen: open }),
-  toggleUploadDrawer:  ()      => set((s) => ({ isUploadDrawerOpen: !s.isUploadDrawerOpen })),
+  // Upload drawer
+  isUploadDrawerOpen:  false,
   setUploadDrawerOpen: (open)  => set({ isUploadDrawerOpen: open }),
+  toggleUploadDrawer:  ()      => set((s) => ({ isUploadDrawerOpen: !s.isUploadDrawerOpen })),
 }));
 
 export default useUIStore;

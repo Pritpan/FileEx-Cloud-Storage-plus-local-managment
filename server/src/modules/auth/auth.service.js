@@ -195,3 +195,19 @@ export const logout = async (rawRefreshToken) => {
 
   return { success: true, message: 'Logged out successfully.' };
 };
+
+// ---------------------------------------------------------------------------
+// updateProfile
+// ---------------------------------------------------------------------------
+export const updateProfile = async (userId, { name }) => {
+  if (!name?.trim()) {
+    throw createServiceError('Name is required.', 400, 'VALIDATION_ERROR');
+  }
+
+  const updated = await authRepository.updateUser(userId, { name: name.trim() });
+
+  return {
+    success: true,
+    data: { user: sanitiseUser(updated) },
+  };
+};

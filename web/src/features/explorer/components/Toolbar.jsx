@@ -22,7 +22,7 @@ export function Toolbar({
     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4 px-6 border-b border-surface-200 dark:border-surface-800 bg-surface-0 dark:bg-surface-950">
       <div className="flex items-center gap-2">
         <UploadButton currentFolderId={currentFolderId} />
-        <Button variant="outline" onClick={onNewFolder}>
+        <Button variant="outline" onClick={onNewFolder} className="text-surface-900 dark:text-surface-100 dark:hover:text-white">
           <FolderPlus className="w-4 h-4 mr-2" />
           New Folder
         </Button>
