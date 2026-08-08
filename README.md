@@ -125,7 +125,7 @@ The desktop app will bring the cloud directly to your local machine, featuring a
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/fileex.git
+   git clone https://github.com/pritpan/fileex.git
    cd fileex
    ```
 
@@ -181,6 +181,4 @@ fileex/
 
 ---
 
-## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
