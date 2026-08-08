@@ -284,11 +284,11 @@ export const permanentlyDeleteItem = async (req, res) => {
 // GET /api/v1/files/search
 // ---------------------------------------------------------------------------
 export const searchFiles = async (req, res) => {
-  const parsed = validate(SearchQuerySchema, req.query, res);
-  if (!parsed) return;
+  const parsed = validate(SearchQuerySchema, req.query);
+  if (!parsed.ok) return res.status(400).json(parsed.response);
 
   const result = await handleService(res, () =>
-    fileService.searchFiles(parsed.q, parsed.parentId, req.user.id)
+    fileService.searchFiles(parsed.data.q, parsed.data.parentId, req.user.id)
   );
 
   if (result) res.status(200).json(result);

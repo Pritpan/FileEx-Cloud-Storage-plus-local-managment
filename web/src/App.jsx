@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import AppRouter from '@/routes/AppRouter';
 import { useAuthStore } from '@/store';
 import { authService } from '@/features/auth';
+import { Toaster } from '@/components/ui/sonner';
 
 /**
  * App — Root component.
@@ -24,7 +25,12 @@ function App() {
     restoreSession();
   }, [setAuth, clearAuth]);
 
-  return <AppRouter />;
+  return (
+    <>
+      <AppRouter />
+      <Toaster position="bottom-right" richColors closeButton />
+    </>
+  );
 }
 
 export default App;

@@ -263,6 +263,20 @@ const search = async (ownerId, query, parentId, db = prisma) => {
 };
 
 // ---------------------------------------------------------------------------
+// countByType
+// Counts the number of active files or folders for a user.
+// ---------------------------------------------------------------------------
+const countByType = async (ownerId, type, db = prisma) => {
+  return db.file.count({
+    where: {
+      ownerId,
+      type,
+      deletedAt: null,
+    },
+  });
+};
+
+// ---------------------------------------------------------------------------
 // Export
 // ---------------------------------------------------------------------------
 const fileRepository = {
@@ -280,6 +294,7 @@ const fileRepository = {
   softDelete,
   restore,
   permanentlyDelete,
+  countByType,
 };
 
 export default fileRepository;

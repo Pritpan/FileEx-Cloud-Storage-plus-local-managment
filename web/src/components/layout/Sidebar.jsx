@@ -17,14 +17,14 @@ export function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         <SidebarItem icon={Folder} label="My Files" to="/explorer" />
         <SidebarItem icon={Clock} label="Recent" disabled />
-        <SidebarItem icon={Trash2} label="Trash" to="/trash" disabled />
+        <SidebarItem icon={Trash2} label="Trash" to="/trash" />
         
         <div className="pt-4 pb-2">
           <p className="px-3 text-xs font-semibold text-surface-500 uppercase tracking-wider">
             System
           </p>
         </div>
-        <SidebarItem icon={HardDrive} label="Storage" to="/storage" disabled />
+        <SidebarItem icon={HardDrive} label="Storage" to="/storage" />
         <SidebarItem icon={Settings} label="Settings" to="/settings" disabled />
       </nav>
 

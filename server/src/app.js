@@ -18,6 +18,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRoutes  from './modules/auth/auth.routes.js';
 import fileRoutes  from './modules/files/index.js';
+import storageRoutes from './modules/storage/index.js';
 
 const app = express();
 
@@ -72,7 +73,8 @@ app.get('/health', (_req, res) => {
 // API Routes — v1
 // Each module is mounted as it is implemented.
 // ---------------------------------------------------------------------------
-app.use('/api/v1/auth',  authRoutes);
-app.use('/api/v1/files', fileRoutes);
+app.use('/api/v1/auth',    authRoutes);
+app.use('/api/v1/files',   fileRoutes);
+app.use('/api/v1/storage', storageRoutes);
 
 export default app;
