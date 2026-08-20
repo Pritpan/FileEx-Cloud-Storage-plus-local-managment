@@ -1,29 +1,3 @@
-// =============================================================================
-// Prisma Schema — Fileex
-// =============================================================================
-//
-// Models are added chunk by chunk as features are implemented.
-// See: docs/DATABASE_DESIGN.md for the full schema specification.
-//
-// Current models:
-//   ✅ User          — Chunk 3.1
-//   ✅ RefreshToken  — Chunk 3.2 (auth)
-//   ✅ File          — Chunk 4.1 (unified file + folder table)
-//   ✅ StorageStats  — Chunk 4.2
-//
-// Pending models:
-//   ⬜ TrashItem     — Chunk 5.1
-//   ⬜ ActivityLog   — Chunk 5.2
-//   ⬜ Notification  — Chunk 6.1
-//   ⬜ UserSettings  — Chunk 6.2
-//
-// Note: There is NO separate Folder model. Folders are entries in the File
-// table with type = FOLDER. See ADR-009 for the rationale.
-//
-// Note: Root directory is virtual. Items at root have parentId = NULL.
-// There is no "root" row in the files table.
-// =============================================================================
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -33,37 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// =============================================================================
-// Enums
-// See: docs/DATABASE_DESIGN.md §3.3
-// =============================================================================
-
-// FileType — distinguishes file blobs from folder metadata rows.
-// Folders: storageKey = NULL, mimeType = NULL, size = 0 (service-enforced).
-// Files:   storageKey required, mimeType required, size > 0 (service-enforced).
 enum FileType {
   FILE
   FOLDER
 }
 
-// FileStatus — tracks the upload lifecycle of a file record.
-// DELETED is intentionally omitted. Deletion is represented by deletedAt (soft delete).
-//
-// Assignment rules (Service layer — NOT enforced by Prisma):
-//   Files:   status starts as PENDING (set by POST /upload/initiate).
-//            transitions to READY (set by POST /upload/complete).
-//            transitions to FAILED if S3 object is absent on recovery check.
-//   Folders: status is set to READY on creation. Folders have no upload lifecycle.
 enum FileStatus {
-  PENDING // File record created; S3 PUT not yet confirmed
-  READY   // S3 object confirmed present (or folder created); visible to the user
-  FAILED  // S3 PUT confirmed absent; file is unusable
+  PENDING
+  READY
+  FAILED
 }
 
-// =============================================================================
-// User
-// See: docs/DATABASE_DESIGN.md §3.1
-// =============================================================================
 model User {
   id             String   @id @default(cuid())
   name           String   @db.VarChar(100)
@@ -73,25 +27,13 @@ model User {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  // Relations
   refreshTokens  RefreshToken[]
   files          File[]
   storageStats   StorageStats?
-  // notifications  Notification[]   — Chunk 6.1
-  // settings       UserSettings?    — Chunk 6.2
-  // activityLogs   ActivityLog[]    — Chunk 5.2
 
   @@map("users")
 }
 
-// =============================================================================
-// RefreshToken
-//
-// Stores hashed refresh tokens for the dual-token auth strategy.
-// The raw token is returned to the client; only the SHA-256 hash is persisted.
-// onDelete: Cascade ensures tokens are cleaned up when a user is deleted.
-// See: docs/DATABASE_DESIGN.md §3.2
-// =============================================================================
 model RefreshToken {
   id        String   @id @default(cuid())
   userId    String
@@ -106,58 +48,26 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
-// =============================================================================
-// File  (Unified File & Folder Model)
-//
-// A single table stores both files and folders.
-// Folders are metadata rows with type = FOLDER, storageKey = NULL.
-// Files are rows with type = FILE, storageKey = a real S3 key.
-//
-// Hierarchy: self-referencing adjacency list via parentId.
-//   - parentId = NULL  →  item lives at the virtual root of the user's drive
-//   - parentId = N     →  item lives inside folder with id = N
-//
-// storageKey is immutable after creation. Rename only updates displayName.
-// Move only updates parentId. No S3 operations are performed for either.
-//
-// Soft delete: deletedAt = NULL means active; NOT NULL means in Trash.
-// All standard queries filter WHERE deletedAt IS NULL (repository layer).
-// Trash queries filter WHERE deletedAt IS NOT NULL (trash repository only).
-//
-// Name uniqueness (ownerId, parentId, displayName) is NOT enforced at the DB
-// level because soft-deleted items would block new items with the same name.
-// Uniqueness is checked in the Service layer before every create/rename/move.
-//
-// See: docs/DATABASE_DESIGN.md §3.3, ADR-009
-// =============================================================================
 model File {
   id              Int        @id @default(autoincrement())
   ownerId         String
   parentId        Int?
 
   displayName     String     @db.VarChar(255)
-  storageKey      String?    @unique @db.VarChar(512)  // NULL for folders; immutable for files. Max real key ≈65 chars; 512 is safe future-proofing
-  mimeType        String?    @db.VarChar(255)          // NULL for folders. 255 accommodates long vendor MIME types
-  size            BigInt     @default(0)               // 0 for folders; bytes for files
+  storageKey      String?    @unique @db.VarChar(512)
+  mimeType        String?    @db.VarChar(255)
+  size            BigInt     @default(0)
   type            FileType   @default(FILE)
-  status          FileStatus @default(PENDING)         // Service sets READY for folders on creation; PENDING→READY for files after upload confirm
-  uploadStartedAt DateTime?                            // NULL for folders. Service sets this to now() inside POST /upload/initiate for files
-  deletedAt       DateTime?                            // NULL = active; NOT NULL = in Trash (soft delete)
+  status          FileStatus @default(PENDING)
+  uploadStartedAt DateTime?
+  deletedAt       DateTime?
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  // Relations
   owner           User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   parent          File?      @relation("FileHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   children        File[]     @relation("FileHierarchy")
 
-  // Indexes
-  // ownerId               — fast lookup of all files belonging to a user
-  // parentId              — fast lookup of all children in a folder
-  // status                — fast filtering of PENDING/READY/FAILED records (upload recovery, listing)
-  // (ownerId, parentId)   — fast folder contents listing scoped to a user
-  // (ownerId, deletedAt)  — fast active/trash split per user
-  // (parentId, deletedAt) — the most common query: WHERE parentId = ? AND deletedAt IS NULL
   @@index([ownerId])
   @@index([parentId])
   @@index([status])
@@ -168,26 +78,11 @@ model File {
   @@map("files")
 }
 
-// =============================================================================
-// StorageStats
-//
-// One row per user. Tracks used vs. allowed storage in bytes.
-// Updated atomically (inside a transaction) whenever:
-//   - POST /upload/complete increments usedStorage by file.size
-//   - DELETE /files/:id (soft delete) does NOT decrement — S3 object still exists
-//   - DELETE /trash/:id (permanent delete) decrements usedStorage by file.size
-//
-// Quota check: performed in the service before POST /upload/initiate.
-//   Condition: usedStorage + requestedSize <= storageLimit
-//
-// Default quota: 100 MB = 104857600 bytes
-// See: docs/DATABASE_DESIGN.md §3.9
-// =============================================================================
 model StorageStats {
   id           Int      @id @default(autoincrement())
   userId       String   @unique
   usedStorage  BigInt   @default(0)
-  storageLimit BigInt   @default(104857600) // 100 MB in bytes
+  storageLimit BigInt   @default(104857600) // 100 MB default
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

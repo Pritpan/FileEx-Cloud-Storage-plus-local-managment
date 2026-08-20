@@ -1,12 +1,5 @@
-// =============================================================================
-// auth.schema.js — Validation schemas for the Auth module
-// =============================================================================
-
 import { z } from 'zod';
 
-// -----------------------------------------------------------------------------
-// RegisterSchema — POST /api/v1/auth/register
-// -----------------------------------------------------------------------------
 export const RegisterSchema = z.object({
   name: z
     .string({ required_error: 'Name is required.' })
@@ -26,9 +19,6 @@ export const RegisterSchema = z.object({
     .max(100, 'Password must not exceed 100 characters.'),
 });
 
-// -----------------------------------------------------------------------------
-// LoginSchema — POST /api/v1/auth/login
-// -----------------------------------------------------------------------------
 export const LoginSchema = z.object({
   email: z
     .string({ required_error: 'Email is required.' })
@@ -41,18 +31,12 @@ export const LoginSchema = z.object({
     .min(1, 'Password is required.'),
 });
 
-// -----------------------------------------------------------------------------
-// RefreshSchema — POST /api/v1/auth/refresh
-// -----------------------------------------------------------------------------
 export const RefreshSchema = z.object({
   refreshToken: z
     .string({ required_error: 'Refresh token is required.' })
     .min(1, 'Refresh token is required.'),
 });
 
-// -----------------------------------------------------------------------------
-// UpdateProfileSchema — PATCH /api/v1/auth/me
-// -----------------------------------------------------------------------------
 export const UpdateProfileSchema = z.object({
   name: z
     .string()

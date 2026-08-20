@@ -1,17 +1,6 @@
-// =============================================================================
-// auth.controller.js
-//
-// Responsibility: HTTP only — parse request, validate, call service, respond.
-// Controllers never contain business logic.
-// =============================================================================
-
 import * as authService from './auth.service.js';
-import { RegisterSchema, LoginSchema, RefreshSchema, UpdateProfileSchema } from './auth.schema.js';
+import { RegisterSchema, LoginSchema, UpdateProfileSchema } from './auth.schema.js';
 
-// ---------------------------------------------------------------------------
-// Reusable: parse a Zod schema against req.body and return the result.
-// Returns { ok: true, data } or { ok: false, response } (ready to send).
-// ---------------------------------------------------------------------------
 const validate = (schema, body) => {
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
@@ -32,9 +21,6 @@ const validate = (schema, body) => {
   return { ok: true, data: parsed.data };
 };
 
-// ---------------------------------------------------------------------------
-// Reusable: handle a service call that may throw a typed error.
-// ---------------------------------------------------------------------------
 const handleService = async (res, fn) => {
   try {
     const result = await fn();
@@ -48,15 +34,12 @@ const handleService = async (res, fn) => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// Cookie Helpers
-// ---------------------------------------------------------------------------
 const setRefreshCookie = (res, refreshToken) => {
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    path: '/api/v1/auth/refresh', // Keep it scoped strictly to the refresh endpoint
+    path: '/api/v1/auth/refresh',
   });
 };
 
@@ -69,9 +52,6 @@ const clearRefreshCookie = (res) => {
   });
 };
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/auth/register
-// ---------------------------------------------------------------------------
 export const register = async (req, res) => {
   const { ok, data, response } = validate(RegisterSchema, req.body);
   if (!ok) return res.status(400).json(response);
@@ -84,9 +64,6 @@ export const register = async (req, res) => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/auth/login
-// ---------------------------------------------------------------------------
 export const login = async (req, res) => {
   const { ok, data, response } = validate(LoginSchema, req.body);
   if (!ok) return res.status(400).json(response);
@@ -99,9 +76,6 @@ export const login = async (req, res) => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/auth/refresh
-// ---------------------------------------------------------------------------
 export const refresh = async (req, res) => {
   const refreshToken = req.cookies?.refreshToken;
   
@@ -120,9 +94,6 @@ export const refresh = async (req, res) => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/auth/logout
-// ---------------------------------------------------------------------------
 export const logout = async (req, res) => {
   const refreshToken = req.cookies?.refreshToken;
 
@@ -130,7 +101,7 @@ export const logout = async (req, res) => {
     try {
       await authService.logout(refreshToken);
     } catch (err) {
-      // Ignore DB errors (e.g. token already revoked) — we still want to clear the cookie.
+      // Best-effort logout; continue to clear cookie
     }
   }
 
@@ -138,20 +109,13 @@ export const logout = async (req, res) => {
   res.status(200).json({ success: true, message: 'Logged out successfully.' });
 };
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/auth/me  (protected — requires authenticate middleware)
-// ---------------------------------------------------------------------------
 export const getMe = async (req, res) => {
-  // req.user is attached by the authenticate middleware.
   res.status(200).json({
     success: true,
     data: { user: req.user },
   });
 };
 
-// ---------------------------------------------------------------------------
-// PATCH /api/v1/auth/me  (protected)
-// ---------------------------------------------------------------------------
 export const updateMe = async (req, res) => {
   const { ok, data, response } = validate(UpdateProfileSchema, req.body);
   if (!ok) return res.status(400).json(response);

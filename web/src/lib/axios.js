@@ -1,9 +1,5 @@
 import axios from 'axios';
 
-/**
- * Axios instance — Fileex API client.
- */
-
 let _accessToken = null;
 
 export const setAccessToken = (token) => { _accessToken = token; };
@@ -30,8 +26,6 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // Refresh should initially be handled during application initialization.
-    // Interceptor structure is ready for future enhancements (e.g. automatic refresh).
     return Promise.reject(error);
   },
 );

@@ -11,7 +11,6 @@ export function useUpload() {
 
   const processUpload = async (file, parentId, uploadId) => {
     try {
-      // 1. Initiate
       updateStatus(uploadId, 'INITIATING');
       const initiateData = await uploadService.initiateUpload({
         displayName: file.name,
@@ -20,7 +19,6 @@ export function useUpload() {
         parentId,
       });
 
-      // 2. Upload to S3
       updateStatus(uploadId, 'UPLOADING');
       await uploadService.uploadToS3(
         initiateData.uploadUrl,
@@ -28,15 +26,12 @@ export function useUpload() {
         (progress) => updateProgress(uploadId, progress)
       );
 
-      // 3. Complete
       updateStatus(uploadId, 'COMPLETING');
       await uploadService.completeUpload({ fileId: initiateData.fileId });
 
-      // 4. Success
       updateStatus(uploadId, 'COMPLETED');
       updateProgress(uploadId, 100);
       
-      // Invalidate the folder so the new file appears
       queryClient.invalidateQueries({ queryKey: filesKeys.ofFolder(parentId) });
       queryClient.invalidateQueries({ queryKey: ['storage'] });
       
@@ -53,14 +48,11 @@ export function useUpload() {
 
   const uploadFiles = useCallback(
     (files, parentId) => {
-      // Convert FileList to Array if necessary
       const fileArray = Array.from(files);
 
       fileArray.forEach((file) => {
-        // Generate a unique client-side ID
         const uploadId = crypto.randomUUID();
 
-        // Add to store
         addUpload({
           id: uploadId,
           file,
@@ -69,7 +61,6 @@ export function useUpload() {
           error: null,
         });
 
-        // Start processing asynchronously
         processUpload(file, parentId, uploadId);
       });
     },

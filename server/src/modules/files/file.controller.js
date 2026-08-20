@@ -1,13 +1,3 @@
-// =============================================================================
-// file.controller.js
-//
-// Responsibility: HTTP only — parse request, call service, send response.
-// Controllers never contain business logic.
-//
-// Helpers (validate / handleService) are intentionally private to this file.
-// They mirror the same pattern used in auth.controller.js.
-// =============================================================================
-
 import * as fileService from './file.service.js';
 import {
   InitiateUploadSchema,
@@ -19,10 +9,6 @@ import {
   SearchQuerySchema,
 } from './file.schema.js';
 
-// ---------------------------------------------------------------------------
-// validate — run a Zod schema against req.body.
-// Returns { ok: true, data } or { ok: false, response } (ready to send).
-// ---------------------------------------------------------------------------
 const validate = (schema, body) => {
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
@@ -43,10 +29,6 @@ const validate = (schema, body) => {
   return { ok: true, data: parsed.data };
 };
 
-// ---------------------------------------------------------------------------
-// handleService — call a service function and catch typed errors.
-// Returns the result, or sends an error response and returns null.
-// ---------------------------------------------------------------------------
 const handleService = async (res, fn) => {
   try {
     const result = await fn();
@@ -60,11 +42,11 @@ const handleService = async (res, fn) => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/files/upload/initiate
-// Protected — authenticate middleware runs before this handler.
-// req.user is attached by authenticate and contains the authenticated user.
-// ---------------------------------------------------------------------------
+const parseId = (rawId) => {
+  const id = parseInt(rawId, 10);
+  return Number.isInteger(id) && id > 0 ? id : null;
+};
+
 export const initiateUpload = async (req, res) => {
   const { ok, data, response } = validate(InitiateUploadSchema, req.body);
   if (!ok) return res.status(400).json(response);
@@ -76,10 +58,6 @@ export const initiateUpload = async (req, res) => {
   if (result) res.status(201).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/files/upload/complete
-// Protected — authenticate middleware runs before this handler.
-// ---------------------------------------------------------------------------
 export const completeUpload = async (req, res) => {
   const { ok, data, response } = validate(CompleteUploadSchema, req.body);
   if (!ok) return res.status(400).json(response);
@@ -91,11 +69,6 @@ export const completeUpload = async (req, res) => {
   if (result) res.status(200).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/files
-// Protected — authenticate middleware runs before this handler.
-// Validates req.query (not req.body) — parentId is a query parameter.
-// ---------------------------------------------------------------------------
 export const listFiles = async (req, res) => {
   const { ok, data, response } = validate(ListFilesQuerySchema, req.query);
   if (!ok) return res.status(400).json(response);
@@ -107,9 +80,6 @@ export const listFiles = async (req, res) => {
   if (result) res.status(200).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/files/folders
-// ---------------------------------------------------------------------------
 export const createFolder = async (req, res) => {
   const { ok, data, response } = validate(CreateFolderSchema, req.body);
   if (!ok) return res.status(400).json(response);
@@ -121,12 +91,9 @@ export const createFolder = async (req, res) => {
   if (result) res.status(201).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// PATCH /api/v1/files/:id/rename
-// ---------------------------------------------------------------------------
 export const renameItem = async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (!Number.isInteger(id) || id <= 0) {
+  const id = parseId(req.params.id);
+  if (!id) {
     return res.status(400).json({
       success: false,
       error: { code: 'VALIDATION_ERROR', message: 'ID must be a positive integer.' },
@@ -143,12 +110,9 @@ export const renameItem = async (req, res) => {
   if (result) res.status(200).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// PATCH /api/v1/files/:id/move
-// ---------------------------------------------------------------------------
 export const moveItem = async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (!Number.isInteger(id) || id <= 0) {
+  const id = parseId(req.params.id);
+  if (!id) {
     return res.status(400).json({
       success: false,
       error: { code: 'VALIDATION_ERROR', message: 'ID must be a positive integer.' },
@@ -165,18 +129,6 @@ export const moveItem = async (req, res) => {
   if (result) res.status(200).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// Helper: parse and validate :id route parameter.
-// Extracted to avoid duplicating the same guard in every handler below.
-// ---------------------------------------------------------------------------
-const parseId = (rawId) => {
-  const id = parseInt(rawId, 10);
-  return Number.isInteger(id) && id > 0 ? id : null;
-};
-
-// ---------------------------------------------------------------------------
-// GET /api/v1/files/:id/download-url
-// ---------------------------------------------------------------------------
 export const getDownloadUrl = async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) {
@@ -193,9 +145,6 @@ export const getDownloadUrl = async (req, res) => {
   if (result) res.status(200).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/files/:id/preview-url
-// ---------------------------------------------------------------------------
 export const getPreviewUrl = async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) {
@@ -212,9 +161,6 @@ export const getPreviewUrl = async (req, res) => {
   if (result) res.status(200).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/files/:id/properties
-// ---------------------------------------------------------------------------
 export const getProperties = async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) {
@@ -231,9 +177,6 @@ export const getProperties = async (req, res) => {
   if (result) res.status(200).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// DELETE /api/v1/files/:id
-// ---------------------------------------------------------------------------
 export const deleteItem = async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) {
@@ -250,9 +193,6 @@ export const deleteItem = async (req, res) => {
   if (result) res.status(200).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/trash
-// ---------------------------------------------------------------------------
 export const getTrash = async (req, res) => {
   const result = await handleService(res, () =>
     fileService.getTrash(req.user.id),
@@ -261,9 +201,6 @@ export const getTrash = async (req, res) => {
   if (result) res.status(200).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// POST /api/v1/trash/:id/restore
-// ---------------------------------------------------------------------------
 export const restoreItem = async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) {
@@ -280,9 +217,6 @@ export const restoreItem = async (req, res) => {
   if (result) res.status(200).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// DELETE /api/v1/trash/:id
-// ---------------------------------------------------------------------------
 export const permanentlyDeleteItem = async (req, res) => {
   const id = parseId(req.params.id);
   if (!id) {
@@ -299,9 +233,6 @@ export const permanentlyDeleteItem = async (req, res) => {
   if (result) res.status(200).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/files/search
-// ---------------------------------------------------------------------------
 export const searchFiles = async (req, res) => {
   const parsed = validate(SearchQuerySchema, req.query);
   if (!parsed.ok) return res.status(400).json(parsed.response);
@@ -313,9 +244,6 @@ export const searchFiles = async (req, res) => {
   if (result) res.status(200).json(result);
 };
 
-// ---------------------------------------------------------------------------
-// GET /api/v1/files/recent
-// ---------------------------------------------------------------------------
 export const getRecentFiles = async (req, res) => {
   const result = await handleService(res, () =>
     fileService.getRecentFiles(req.user.id),
