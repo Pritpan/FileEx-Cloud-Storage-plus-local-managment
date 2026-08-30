@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useUIStore } from '@/store';
 import { Toolbar } from '../components/Toolbar';
@@ -18,6 +18,7 @@ import { UploadDropzone } from '@/features/upload/components/UploadDropzone';
 import { UploadQueue } from '@/features/upload/components/UploadQueue';
 import { usePreview } from '@/features/preview/hooks/usePreview';
 import { useDownload } from '@/features/preview/hooks/useDownload';
+import { useTransfers } from '@/features/upload/hooks/useTransfers';
 import { PreviewDialog } from '@/features/preview/components/PreviewDialog';
 import { useSearch } from '@/features/search/hooks/useSearch';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -71,7 +72,35 @@ export function ExplorerPage() {
 
   // ── Preview & Download ────────────────────────────────────────────────────
   const { open: previewOpen, item: previewItem, previewUrl, isLoading: previewLoading, isError: previewError, openPreview, closePreview } = usePreview();
-  const { downloadFile } = useDownload();
+  const { downloadFile: browserDownload } = useDownload();
+  const { downloadCloudToLocal, uploadLocalToCloud } = useTransfers();
+
+  // In Electron: native save dialog + Main Process streaming (no blob in renderer).
+  // In browser: existing blob anchor download unchanged.
+  const handleDownload = (item) => {
+    if (window.electronAPI) {
+      downloadCloudToLocal(item, null);
+    } else {
+      browserDownload(item);
+    }
+  };
+
+  const handleDropItem = useCallback(async (e, cloudFolderItem) => {
+    if (cloudFolderItem.type !== 'FOLDER') return;
+    const dataStr = e.dataTransfer.getData('application/json');
+    if (!dataStr) return;
+
+    try {
+      const data = JSON.parse(dataStr);
+      if (data.type === 'LOCAL_FILE') {
+        const mimeType = 'application/octet-stream';
+        await uploadLocalToCloud(data.path, data.name, mimeType, data.size, cloudFolderItem.id);
+      }
+    } catch (err) {
+      console.error('Invalid drop data', err);
+    }
+  }, [uploadLocalToCloud]);
+
 
   // ── Navigation handlers ───────────────────────────────────────────────────
   const handleItemDoubleClick = (item) => {
@@ -103,7 +132,8 @@ export function ExplorerPage() {
     onProperties: handleProperties,
     onDoubleClick: handleItemDoubleClick,
     onPreview: openPreview,
-    onDownload: downloadFile,
+    onDownload: handleDownload,
+    onDropItem: handleDropItem,
   };
 
   // ── Render content body ───────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { Cloud, Folder, Clock, Trash2, HardDrive, Settings } from 'lucide-react';
+import { Cloud, Folder, Clock, Trash2, HardDrive, Settings, Monitor } from 'lucide-react';
 import { SidebarItem } from './SidebarItem';
 import { StorageBar } from './StorageBar';
 import { useUIStore } from '@/store';
@@ -47,6 +47,19 @@ export function Sidebar() {
         <SidebarItem icon={Folder}    label="My Files" to="/explorer" collapsed={collapsed} />
         <SidebarItem icon={Clock}     label="Recent"   to="/recent"   collapsed={collapsed} />
         <SidebarItem icon={Trash2}    label="Trash"    to="/trash"    collapsed={collapsed} />
+
+        {/* Local section — only rendered inside the Electron desktop app */}
+        {window.electronAPI && (
+          <>
+            {!collapsed && (
+              <div className="pt-4 pb-1 px-3">
+                <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider">Local</p>
+              </div>
+            )}
+            {collapsed && <div className="pt-2" />}
+            <SidebarItem icon={Monitor} label="This PC" to="/local" collapsed={collapsed} />
+          </>
+        )}
 
         {!collapsed && (
           <div className="pt-4 pb-1 px-3">

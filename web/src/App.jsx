@@ -3,6 +3,7 @@ import AppRouter from '@/routes/AppRouter';
 import { useAuthStore, useThemeStore } from '@/store';
 import { authService } from '@/features/auth';
 import { Toaster } from '@/components/ui/sonner';
+import { useTransferProgressBridge } from '@/features/upload/hooks/useTransfers';
 
 /**
  * App — Root component.
@@ -11,6 +12,9 @@ import { Toaster } from '@/components/ui/sonner';
 function App() {
   const { setAuth, clearAuth } = useAuthStore();
   const initTheme = useThemeStore((s) => s.init);
+
+  // E6: Subscribe to Electron transfer progress events (no-op in browser)
+  useTransferProgressBridge();
 
   useEffect(() => {
     // Apply saved theme before first paint to avoid flash
@@ -38,4 +42,5 @@ function App() {
 }
 
 export default App;
+
 

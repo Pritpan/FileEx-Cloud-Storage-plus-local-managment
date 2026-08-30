@@ -1,0 +1,14 @@
+# Electron build outputs
+dist/
+out/
+
+# Node dependencies
+node_modules/
+
+# OS artefacts
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

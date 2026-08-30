@@ -1,0 +1,16 @@
+{
+  "name": "fileex-desktop",
+  "version": "0.1.0",
+  "description": "FileEx desktop client — Electron shell wrapping the FileEx React application",
+  "main": "main.js",
+  "type": "module",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^44.0.0"
+  }
+}

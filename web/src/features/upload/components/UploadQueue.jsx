@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, ChevronDown, ChevronUp, UploadCloud } from 'lucide-react';
+import { X, ChevronDown, ChevronUp, ArrowUpDown } from 'lucide-react';
 import { useUploadStore } from '../store/upload.store';
 import { UploadItem } from './UploadItem';
 import { Card } from '@/components/ui/card';
@@ -23,13 +23,14 @@ export function UploadQueue() {
         onClick={() => setIsMinimized(!isMinimized)}
       >
         <div className="flex items-center gap-2">
-          <UploadCloud className="w-5 h-5" />
+          <ArrowUpDown className="w-5 h-5" />
           <span className="font-medium text-sm">
             {inProgressCount > 0 
-              ? `Uploading ${inProgressCount} file${inProgressCount > 1 ? 's' : ''}...` 
-              : 'Uploads complete'}
+              ? `Transferring ${inProgressCount} file${inProgressCount > 1 ? 's' : ''}...` 
+              : 'Transfers complete'}
           </span>
         </div>
+
         
         <div className="flex items-center gap-1">
           {inProgressCount === 0 && (

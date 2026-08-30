@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -10,6 +11,9 @@ import { cn } from '@/lib/utils';
  * @param {{ icon, label, to, disabled, collapsed }} props
  */
 export function SidebarItem({ icon: Icon, label, to, disabled, collapsed }) {
+  const navigate = useNavigate();
+  const hoverTimeout = useRef(null);
+
   if (disabled) {
     return (
       <div
@@ -25,10 +29,38 @@ export function SidebarItem({ icon: Icon, label, to, disabled, collapsed }) {
     );
   }
 
+  const clearHoverTimeout = () => {
+    if (hoverTimeout.current) {
+      clearTimeout(hoverTimeout.current);
+      hoverTimeout.current = null;
+    }
+  };
+
   return (
     <NavLink
       to={to}
       title={collapsed ? label : undefined}
+      onDragEnter={(e) => {
+        e.preventDefault();
+      }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'none';
+        
+        // Start timer if not already running
+        if (!hoverTimeout.current) {
+          hoverTimeout.current = setTimeout(() => {
+            navigate(to);
+            hoverTimeout.current = null;
+          }, 600);
+        }
+      }}
+      onDragLeave={clearHoverTimeout}
+      onDragEnd={clearHoverTimeout}
+      onDrop={(e) => {
+        e.preventDefault();
+        clearHoverTimeout();
+      }}
       className={({ isActive }) =>
         cn(
           'flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors',
@@ -39,8 +71,8 @@ export function SidebarItem({ icon: Icon, label, to, disabled, collapsed }) {
         )
       }
     >
-      <Icon className="w-5 h-5 shrink-0" />
-      {!collapsed && <span className="truncate">{label}</span>}
+      <Icon className="w-5 h-5 shrink-0 pointer-events-none" />
+      {!collapsed && <span className="truncate pointer-events-none">{label}</span>}
     </NavLink>
   );
 }

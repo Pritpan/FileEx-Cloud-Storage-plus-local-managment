@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { File, Folder, Image, FileText, FileSpreadsheet, MoreVertical, Pencil, FolderInput, Trash2, Eye, Download } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import {
@@ -105,16 +106,55 @@ function ItemActions({ item, onRename, onMove, onDelete, onProperties, onPreview
 /**
  * ExplorerItem — a card for grid view display of a single file or folder.
  *
- * @param {{ item, onRename, onMove, onDelete }} props
+ * @param {{ item, onRename, onMove, onDelete, onProperties, onDoubleClick, onPreview, onDownload, onDropItem }} props
  */
-export function ExplorerItem({ item, onRename, onMove, onDelete, onProperties, onDoubleClick, onPreview, onDownload }) {
-  const subtitle = item.type === 'FOLDER'
-    ? formatDate(item.updatedAt)
-    : formatBytes(item.size);
+export function ExplorerItem({ item, onRename, onMove, onDelete, onProperties, onDoubleClick, onPreview, onDownload, onDropItem }) {
+  const isFolder = item.type === 'FOLDER';
+  const subtitle = isFolder ? formatDate(item.updatedAt) : formatBytes(item.size);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   return (
     <Card 
-      className="group relative flex flex-col items-center justify-center p-4 h-40 border border-surface-200 dark:border-surface-800 bg-surface-0 dark:bg-surface-900 hover:border-brand-300 dark:hover:border-brand-700 hover:bg-brand-50/50 dark:hover:bg-brand-900/10 transition-colors cursor-pointer shadow-sm"
+      draggable={!isFolder}
+      onDragStart={(e) => {
+        if (isFolder) {
+          e.preventDefault();
+          return;
+        }
+        e.dataTransfer.setData('application/json', JSON.stringify({
+          type: 'CLOUD_FILE',
+          id: item.id,
+          name: item.displayName,
+          size: item.size
+        }));
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
+      onDragOver={(e) => {
+        if (!isFolder) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
+        setIsDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        if (!isFolder) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(false);
+      }}
+      onDrop={(e) => {
+        if (!isFolder) return;
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(false);
+        onDropItem?.(e, item);
+      }}
+      className={[
+        'group relative flex flex-col items-center justify-center p-4 h-40 border transition-colors cursor-pointer shadow-sm select-none',
+        'bg-surface-0 dark:bg-surface-900',
+        'hover:border-brand-300 dark:hover:border-brand-700 hover:bg-brand-50/50 dark:hover:bg-brand-900/10',
+        isDragOver ? 'border-brand-500 ring-2 ring-brand-500 bg-brand-50/50 dark:bg-brand-900/20' : 'border-surface-200 dark:border-surface-800'
+      ].join(' ')}
       onDoubleClick={() => onDoubleClick && onDoubleClick(item)}
     >
       {/* Action menu — appears on hover */}
@@ -137,3 +177,4 @@ export function ExplorerItem({ item, onRename, onMove, onDelete, onProperties, o
     </Card>
   );
 }
+

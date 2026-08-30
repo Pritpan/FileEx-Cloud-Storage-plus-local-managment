@@ -1,29 +1,41 @@
+/**
+ * LocalExplorerTable.jsx — list view for local files/folders
+ *
+ * Local-specific table with correct context menus and selection state.
+ * Does NOT use the shared ExplorerTable (cloud-specific menu items).
+ *
+ * Context menu per row:
+ *   Open | Upload to Cloud | Copy | Cut | Rename | Properties | Delete
+ *
+ * Selection: single click highlights the row.
+ */
 import { useState } from 'react';
-import { getItemIcon, formatBytes, formatDate } from './ExplorerItem';
-import { Pencil, FolderInput, Trash2, MoreVertical, Eye, Download, FileText } from 'lucide-react';
+import { getItemIcon, formatBytes, formatDate } from '@/features/explorer/components/ExplorerItem';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  FolderOpen, UploadCloud, Copy, Scissors,
+  Pencil, Trash2, FileText, MoreVertical,
+} from 'lucide-react';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
 
-/**
- * ExplorerTable — list view for file/folder items.
- *
- * @param {{ items, onRename, onMove, onDelete }} props
- */
-export function ExplorerTable({ items, onRename, onMove, onDelete, onProperties, onDoubleClick, onPreview, onDownload, onDropItem }) {
+export function LocalExplorerTable({
+  items,
+  selectedId,
+  onSelect,
+  onOpen,
+  onUploadToCloud,
+  onCopy,
+  onCut,
+  onRename,
+  onDelete,
+  onProperties,
+  onDropItem,
+}) {
   return (
     <div className="px-6 py-4">
       <div className="border border-surface-200 dark:border-surface-800 rounded-md bg-surface-0 dark:bg-surface-900">
@@ -38,16 +50,18 @@ export function ExplorerTable({ items, onRename, onMove, onDelete, onProperties,
           </TableHeader>
           <TableBody>
             {items.map((item) => (
-              <ExplorerTableRow
+              <LocalExplorerTableRow
                 key={item.id}
                 item={item}
+                isSelected={selectedId === item.id}
+                onSelect={onSelect}
+                onOpen={onOpen}
+                onUploadToCloud={onUploadToCloud}
+                onCopy={onCopy}
+                onCut={onCut}
                 onRename={onRename}
-                onMove={onMove}
                 onDelete={onDelete}
                 onProperties={onProperties}
-                onDoubleClick={onDoubleClick}
-                onPreview={onPreview}
-                onDownload={onDownload}
                 onDropItem={onDropItem}
               />
             ))}
@@ -58,15 +72,17 @@ export function ExplorerTable({ items, onRename, onMove, onDelete, onProperties,
   );
 }
 
-function ExplorerTableRow({
+function LocalExplorerTableRow({
   item,
+  isSelected,
+  onSelect,
+  onOpen,
+  onUploadToCloud,
+  onCopy,
+  onCut,
   onRename,
-  onMove,
   onDelete,
   onProperties,
-  onDoubleClick,
-  onPreview,
-  onDownload,
   onDropItem,
 }) {
   const isFolder = item.type === 'FOLDER';
@@ -74,7 +90,8 @@ function ExplorerTableRow({
 
   return (
     <TableRow
-      onDoubleClick={() => onDoubleClick && onDoubleClick(item)}
+      onClick={() => onSelect?.(item)}
+      onDoubleClick={() => onOpen?.(item)}
       draggable={!isFolder}
       onDragStart={(e) => {
         if (isFolder) {
@@ -82,10 +99,10 @@ function ExplorerTableRow({
           return;
         }
         e.dataTransfer.setData('application/json', JSON.stringify({
-          type: 'CLOUD_FILE',
-          id: item.id,
-          name: item.displayName,
-          size: item.size
+          type: 'LOCAL_FILE',
+          path: item._local.path,
+          name: item._local.name,
+          size: item._local.size
         }));
         e.dataTransfer.effectAllowed = 'copy';
       }}
@@ -110,10 +127,11 @@ function ExplorerTableRow({
         onDropItem?.(e, item);
       }}
       className={[
-        'cursor-pointer transition-colors group select-none border-surface-200 dark:border-surface-800',
-        isDragOver
-          ? 'bg-brand-50/50 dark:bg-brand-900/20 ring-1 ring-brand-500'
-          : 'hover:bg-surface-50 dark:hover:bg-surface-800/50'
+        'cursor-pointer border-surface-200 dark:border-surface-800 transition-colors group select-none',
+        isSelected
+          ? 'bg-brand-50 dark:bg-brand-900/20 hover:bg-brand-100 dark:hover:bg-brand-900/30'
+          : 'hover:bg-surface-50 dark:hover:bg-surface-800/50',
+        isDragOver ? 'bg-blue-50/50 dark:bg-blue-900/20' : '',
       ].join(' ')}
     >
       <TableCell className="font-medium">
@@ -128,7 +146,7 @@ function ExplorerTableRow({
         {formatDate(item.updatedAt)}
       </TableCell>
       <TableCell className="text-right text-surface-500 dark:text-surface-400">
-        {item.type === 'FOLDER' ? '--' : formatBytes(item.size)}
+        {isFolder ? '--' : formatBytes(item.size)}
       </TableCell>
       <TableCell>
         <DropdownMenu>
@@ -139,44 +157,57 @@ function ExplorerTableRow({
             <MoreVertical className="w-4 h-4" />
             <span className="sr-only">Open menu</span>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            {item.type !== 'FOLDER' && (
-              <>
-                <DropdownMenuItem onClick={() => onPreview(item)}>
-                  <Eye className="w-4 h-4 mr-2" />
-                  Preview
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDownload(item)}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-              </>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={() => onOpen?.(item)}>
+              <FolderOpen className="w-4 h-4 mr-2" />
+              Open
+            </DropdownMenuItem>
+
+            {!isFolder && (
+              <DropdownMenuItem onClick={() => onUploadToCloud?.(item)}>
+                <UploadCloud className="w-4 h-4 mr-2" />
+                Upload to Cloud
+              </DropdownMenuItem>
             )}
-            <DropdownMenuItem onClick={() => onRename(item)}>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem onClick={() => onCopy?.(item)}>
+              <Copy className="w-4 h-4 mr-2" />
+              Copy
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onCut?.(item)}>
+              <Scissors className="w-4 h-4 mr-2" />
+              Cut
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+
+            <DropdownMenuItem onClick={() => onRename?.(item)}>
               <Pencil className="w-4 h-4 mr-2" />
               Rename
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onMove(item)}>
-              <FolderInput className="w-4 h-4 mr-2" />
-              Move
-            </DropdownMenuItem>
+
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onProperties(item)}>
+
+            <DropdownMenuItem onClick={() => onProperties?.(item)}>
               <FileText className="w-4 h-4 mr-2" />
               Properties
             </DropdownMenuItem>
+
             <DropdownMenuSeparator />
+
             <DropdownMenuItem
-              onClick={() => onDelete(item)}
+              onClick={() => onDelete?.(item)}
               className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Move to Trash
+              Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </TableCell>
     </TableRow>
+
   );
 }

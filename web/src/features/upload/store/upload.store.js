@@ -3,17 +3,19 @@ import { create } from 'zustand';
 /**
  * upload.store.js
  *
- * Manages client-side upload state. 
+ * Manages client-side upload/download transfer state.
  * Does NOT communicate with the backend.
  *
- * Upload Status:
- * - PENDING
- * - INITIATING
- * - UPLOADING
- * - COMPLETING
+ * Status values:
+ * - PENDING       (queued, not yet started)
+ * - INITIATING    (calling backend initiate API — uploads only)
+ * - UPLOADING     (streaming to S3)
+ * - DOWNLOADING   (streaming from S3 to local disk)
+ * - COMPLETING    (calling backend complete API — uploads only)
  * - COMPLETED
  * - FAILED
  */
+
 
 export const useUploadStore = create((set, get) => ({
   uploads: [],

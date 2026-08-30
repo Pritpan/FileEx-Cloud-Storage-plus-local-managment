@@ -12,6 +12,7 @@ import { TrashPage } from '@/features/trash/pages/TrashPage';
 import { StoragePage } from '@/features/storage/pages/StoragePage';
 import { SettingsPage } from '@/features/profile/pages/SettingsPage';
 import { RecentPage } from '@/features/recent/pages/RecentPage';
+import { LocalExplorerPage } from '@/features/local';
 
 /**
  * AppRouter — Central route tree.
@@ -38,6 +39,7 @@ function AppRouter() {
           <Route path="/trash"                 element={<TrashPage />} />
           <Route path="/storage"               element={<StoragePage />} />
           <Route path="/settings"              element={<SettingsPage />} />
+          <Route path="/local"                 element={<LocalExplorerPage />} />
         </Route>
       </Route>
     </Routes>
