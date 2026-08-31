@@ -57,12 +57,12 @@ export function UploadDropzone({ children, currentFolderId }) {
 
       {/* Drag Overlay */}
       {(isDragActive || isHtml5DragOver) && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-brand-50/90 dark:bg-brand-950/90 backdrop-blur-sm border-2 border-dashed border-brand-500 m-2 rounded-xl">
-          <div className="bg-surface-0 dark:bg-surface-900 p-6 rounded-full shadow-lg mb-4">
-            <UploadCloud className="w-12 h-12 text-brand-600 dark:text-brand-400" />
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-brand-50/95 dark:bg-brand-950/90 backdrop-blur-sm border-2 border-dashed border-brand-600 m-2 rounded-md">
+          <div className="bg-surface-0 dark:bg-surface-800 p-6 rounded-full shadow-sm mb-4">
+            <UploadCloud className="w-12 h-12 text-brand-600" />
           </div>
-          <h3 className="text-2xl font-bold text-brand-900 dark:text-brand-100">Drop files here to upload</h3>
-          <p className="text-brand-700 dark:text-brand-300 mt-2">Files will be uploaded to the current folder</p>
+          <h3 className="text-xl font-semibold text-brand-600 dark:text-brand-400">Drop files here to upload</h3>
+          <p className="text-brand-600/70 dark:text-brand-400/70 mt-1 text-sm">Files will be uploaded to the current folder</p>
         </div>
       )}
     </div>

@@ -30,6 +30,8 @@
  *   E4: move(src, dest)       → "filesystem:move"
  *   E5: listDrives()          → "filesystem:list-drives"
  *   E5: getHomePath()         → "filesystem:get-home"
+ *   E6.3: getDefaultRoot()    → "filesystem:get-default-root"
+ *   E6.3: searchFiles(p,q)    → "filesystem:search"
  */
 
 const { contextBridge, ipcRenderer } = require('electron');
@@ -172,6 +174,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
    * Returns a Promise → { success, data: { path } }
    */
   getHomePath: () => ipcRenderer.invoke('filesystem:get-home'),
+
+  /**
+   * getDefaultRoot()
+   * Returns the platform default filesystem root (C:\ on Windows, / on Unix).
+   * Used by the Local tab to always reset navigation to the drive root.
+   * Returns a Promise → { success, data: { path, label } }
+   */
+  getDefaultRoot: () => ipcRenderer.invoke('filesystem:get-default-root'),
+
+  /**
+   * searchFiles(dirPath, query)
+   * Recursively searches `dirPath` for files/folders whose name contains `query`.
+   * Traversal is done entirely in the Main Process — no fs exposure to renderer.
+   * Returns a Promise → { success, data: Array<{ name, path, type, size, modifiedAt }> }
+   */
+  searchFiles: (dirPath, query) => ipcRenderer.invoke('filesystem:search', dirPath, query),
 
   // -------------------------------------------------------------------------
   // E6 — Local ↔ Cloud Transfers

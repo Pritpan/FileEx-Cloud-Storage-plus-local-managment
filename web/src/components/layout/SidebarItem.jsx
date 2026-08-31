@@ -66,8 +66,8 @@ export function SidebarItem({ icon: Icon, label, to, disabled, collapsed }) {
           'flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors',
           collapsed && 'justify-center px-2',
           isActive
-            ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-400'
-            : 'text-surface-600 hover:bg-surface-100 hover:text-surface-900 dark:text-surface-400 dark:hover:bg-surface-800 dark:hover:text-surface-100',
+            ? 'bg-brand-50 text-brand-600 dark:bg-brand-900/60 dark:text-brand-400'
+            : 'text-surface-600 hover:bg-surface-100 hover:text-surface-600 dark:text-surface-400 dark:hover:bg-surface-700 dark:hover:text-surface-100',
         )
       }
     >

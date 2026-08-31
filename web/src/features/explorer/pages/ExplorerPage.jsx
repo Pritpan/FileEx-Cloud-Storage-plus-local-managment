@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useUIStore } from '@/store';
+import { Cloud } from 'lucide-react';
 import { Toolbar } from '../components/Toolbar';
 import { BreadcrumbNav } from '../components/BreadcrumbNav';
 import { ExplorerGrid } from '../components/ExplorerGrid';
@@ -23,159 +23,111 @@ import { PreviewDialog } from '@/features/preview/components/PreviewDialog';
 import { useSearch } from '@/features/search/hooks/useSearch';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SearchResults } from '@/features/search/components/SearchResults';
+import { EnvironmentBanner } from '@/components/environment/EnvironmentBanner';
 
 export function ExplorerPage() {
   const { folderId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [viewMode, setViewMode] = useState('grid');
-  const setUploadDrawerOpen = useUIStore((s) => s.setUploadDrawerOpen);
+  const [viewMode, setViewMode] = useState('list');
+  const [selectedItem, setSelectedItem] = useState(null);
 
-  // folderId from URL param is always a string; convert to number or null for root.
   const currentFolderId = folderId ? parseInt(folderId, 10) : null;
-
-  // Derive breadcrumbs from location state, defaulting to root if missing (e.g. direct URL visit)
   const breadcrumbs = location.state?.breadcrumbs || [{ id: 'root', label: 'My Files' }];
 
   const { files, isLoading, isError, error, refetch } = useFiles(currentFolderId);
-
   const errorMessage = error?.response?.data?.error?.message || error?.message;
 
-  // ── Search state ──────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('');
-  // Debounce 400ms to avoid a request on every single keystroke
   const debouncedQuery = useDebounce(searchQuery, 400);
-  // Only enter search mode when at least 2 characters are typed
   const isSearchMode = debouncedQuery.trim().length >= 2;
+  const { data: searchResults, isLoading: isSearchLoading, isError: isSearchError, isFetching: isSearchFetching } = useSearch(debouncedQuery);
 
-  const {
-    data: searchResults,
-    isLoading: isSearchLoading,
-    isError: isSearchError,
-    isFetching: isSearchFetching,
-  } = useSearch(debouncedQuery);
-
-  // ── Dialog state ──────────────────────────────────────────────────────────
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
-
-  // For item-specific dialogs, track both open state and the target item
   const [renameState, setRenameState] = useState({ open: false, item: null });
   const [moveState, setMoveState] = useState({ open: false, item: null });
   const [deleteState, setDeleteState] = useState({ open: false, item: null });
   const [propertiesState, setPropertiesState] = useState({ open: false, item: null });
 
-  // ── Action handlers (passed down to grid/table) ───────────────────────────
   const handleRename = (item) => setRenameState({ open: true, item });
-  const handleMove = (item) => setMoveState({ open: true, item });
+  const handleMove   = (item) => setMoveState({ open: true, item });
   const handleDelete = (item) => setDeleteState({ open: true, item });
   const handleProperties = (item) => setPropertiesState({ open: true, item });
 
-  // ── Preview & Download ────────────────────────────────────────────────────
   const { open: previewOpen, item: previewItem, previewUrl, isLoading: previewLoading, isError: previewError, openPreview, closePreview } = usePreview();
   const { downloadFile: browserDownload } = useDownload();
   const { downloadCloudToLocal, uploadLocalToCloud } = useTransfers();
 
-  // In Electron: native save dialog + Main Process streaming (no blob in renderer).
-  // In browser: existing blob anchor download unchanged.
   const handleDownload = (item) => {
-    if (window.electronAPI) {
-      downloadCloudToLocal(item, null);
-    } else {
-      browserDownload(item);
-    }
+    if (window.electronAPI) downloadCloudToLocal(item, null);
+    else browserDownload(item);
   };
 
   const handleDropItem = useCallback(async (e, cloudFolderItem) => {
     if (cloudFolderItem.type !== 'FOLDER') return;
     const dataStr = e.dataTransfer.getData('application/json');
     if (!dataStr) return;
-
     try {
       const data = JSON.parse(dataStr);
       if (data.type === 'LOCAL_FILE') {
-        const mimeType = 'application/octet-stream';
-        await uploadLocalToCloud(data.path, data.name, mimeType, data.size, cloudFolderItem.id);
+        await uploadLocalToCloud(data.path, data.name, 'application/octet-stream', data.size, cloudFolderItem.id);
       }
-    } catch (err) {
-      console.error('Invalid drop data', err);
-    }
+    } catch (err) { console.error('Invalid drop data', err); }
   }, [uploadLocalToCloud]);
 
+  const handleItemClick = (item) => setSelectedItem((prev) => prev?.id === item.id ? null : item);
 
-  // ── Navigation handlers ───────────────────────────────────────────────────
   const handleItemDoubleClick = (item) => {
     if (item.type === 'FOLDER') {
-      // When navigating from search results we still push to the folder URL.
       const newBreadcrumbs = [...breadcrumbs, { id: item.id, label: item.displayName }];
       navigate(`/explorer/${item.id}`, { state: { breadcrumbs: newBreadcrumbs } });
-      // Clear search so user lands in the folder view
       setSearchQuery('');
+      setSelectedItem(null);
     } else {
       openPreview(item);
     }
   };
 
   const handleBreadcrumbNavigate = (item, index) => {
-    if (item.id === 'root') {
-      navigate('/explorer', { state: { breadcrumbs: [{ id: 'root', label: 'My Files' }] } });
-    } else {
-      const newBreadcrumbs = breadcrumbs.slice(0, index + 1);
-      navigate(`/explorer/${item.id}`, { state: { breadcrumbs: newBreadcrumbs } });
-    }
+    if (item.id === 'root') navigate('/explorer', { state: { breadcrumbs: [{ id: 'root', label: 'My Files' }] } });
+    else navigate(`/explorer/${item.id}`, { state: { breadcrumbs: breadcrumbs.slice(0, index + 1) } });
+    setSelectedItem(null);
   };
 
-  // Shared props for both normal and search result renderers
   const explorerActionProps = {
-    onRename: handleRename,
-    onMove: handleMove,
-    onDelete: handleDelete,
-    onProperties: handleProperties,
-    onDoubleClick: handleItemDoubleClick,
-    onPreview: openPreview,
-    onDownload: handleDownload,
-    onDropItem: handleDropItem,
+    onRename: handleRename, onMove: handleMove, onDelete: handleDelete,
+    onProperties: handleProperties, onDoubleClick: handleItemDoubleClick,
+    onPreview: openPreview, onDownload: handleDownload, onDropItem: handleDropItem,
+    onItemClick: handleItemClick, selectedItem,
   };
 
-  // ── Render content body ───────────────────────────────────────────────────
   const renderBody = () => {
-    // User is typing but debounce/threshold hasn't triggered yet — show skeleton
-    // to prevent the regular file list from flashing through mid-keystroke
     const isTyping = searchQuery.trim().length > 0 && !isSearchMode;
     if (isTyping) return <LoadingSkeleton viewMode={viewMode} />;
-
-    // Search mode: show SearchResults instead of the regular file list
     if (isSearchMode) {
       if (isSearchLoading) return <LoadingSkeleton viewMode={viewMode} />;
-      return (
-        <SearchResults
-          query={debouncedQuery}
-          results={searchResults ?? []}
-          isError={isSearchError}
-          viewMode={viewMode}
-          {...explorerActionProps}
-        />
-      );
+      return <SearchResults query={debouncedQuery} results={searchResults ?? []} isError={isSearchError} viewMode={viewMode} {...explorerActionProps} />;
     }
-
-    // Normal explorer mode
     if (isLoading) return <LoadingSkeleton viewMode={viewMode} />;
-    if (isError)   return <ErrorState message={errorMessage} onRetry={refetch} />;
-    if (files.length === 0) return (
-      <EmptyState 
-        onNewFolder={() => setCreateFolderOpen(true)} 
-        currentFolderId={currentFolderId} 
-      />
-    );
-
-    return viewMode === 'grid' ? (
-      <ExplorerGrid items={files} {...explorerActionProps} />
-    ) : (
-      <ExplorerTable items={files} {...explorerActionProps} />
-    );
+    if (isError) return <ErrorState message={errorMessage} onRetry={refetch} />;
+    if (files.length === 0) return <EmptyState onNewFolder={() => setCreateFolderOpen(true)} currentFolderId={currentFolderId} />;
+    return viewMode === 'grid'
+      ? <ExplorerGrid items={files} {...explorerActionProps} />
+      : <ExplorerTable items={files} {...explorerActionProps} />;
   };
 
   return (
     <div className="flex flex-col h-full w-full bg-surface-50 dark:bg-surface-950">
+      {/* Workspace identity header */}
+      <div className="flex items-center gap-3 px-5 py-2.5 border-b border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 shrink-0">
+        <Cloud className="w-5 h-5 text-brand-600 dark:text-brand-400 shrink-0" />
+        <h1 className="text-base font-semibold text-brand-600 dark:text-brand-400 tracking-tight">Cloud (Sky)</h1>
+      </div>
+
+      {/* Environment banner */}
+      <EnvironmentBanner environment="cloud" />
+
+      {/* Toolbar */}
       <Toolbar
         viewMode={viewMode}
         setViewMode={setViewMode}
@@ -185,63 +137,30 @@ export function ExplorerPage() {
         onSearchChange={setSearchQuery}
         onSearchClear={() => setSearchQuery('')}
         isSearching={isSearchFetching && isSearchMode}
+        selectedItem={selectedItem}
       />
 
-      {/* Hide breadcrumbs in search mode — they're meaningless for global results */}
+      {/* Breadcrumbs */}
       {!isSearchMode && (
         <BreadcrumbNav items={breadcrumbs} onNavigate={handleBreadcrumbNavigate} />
       )}
 
+      {/* File workspace */}
       <UploadDropzone currentFolderId={currentFolderId}>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto" onClick={() => setSelectedItem(null)}>
           {renderBody()}
         </div>
       </UploadDropzone>
 
       <UploadQueue />
 
-      {/* ── Dialogs ──────────────────────────────────────────────────────── */}
-      <CreateFolderDialog
-        open={createFolderOpen}
-        onOpenChange={setCreateFolderOpen}
-        currentFolderId={currentFolderId}
-      />
-
-      <RenameDialog
-        open={renameState.open}
-        onOpenChange={(open) => setRenameState((s) => ({ ...s, open }))}
-        item={renameState.item}
-        currentFolderId={currentFolderId}
-      />
-
-      <MoveDialog
-        open={moveState.open}
-        onOpenChange={(open) => setMoveState((s) => ({ ...s, open }))}
-        item={moveState.item}
-        currentFolderId={currentFolderId}
-      />
-
-      <DeleteDialog
-        open={deleteState.open}
-        onOpenChange={(open) => setDeleteState((s) => ({ ...s, open }))}
-        item={deleteState.item}
-        currentFolderId={currentFolderId}
-      />
-
-      <PropertiesDialog
-        open={propertiesState.open}
-        onOpenChange={(open) => setPropertiesState((s) => ({ ...s, open }))}
-        item={propertiesState.item}
-      />
-
-      <PreviewDialog
-        open={previewOpen}
-        onOpenChange={(open) => { if (!open) closePreview(); }}
-        item={previewItem}
-        previewUrl={previewUrl}
-        isLoading={previewLoading}
-        isError={previewError}
-      />
+      {/* Dialogs */}
+      <CreateFolderDialog open={createFolderOpen} onOpenChange={setCreateFolderOpen} currentFolderId={currentFolderId} />
+      <RenameDialog open={renameState.open} onOpenChange={(open) => setRenameState((s) => ({ ...s, open }))} item={renameState.item} currentFolderId={currentFolderId} />
+      <MoveDialog open={moveState.open} onOpenChange={(open) => setMoveState((s) => ({ ...s, open }))} item={moveState.item} currentFolderId={currentFolderId} />
+      <DeleteDialog open={deleteState.open} onOpenChange={(open) => setDeleteState((s) => ({ ...s, open }))} item={deleteState.item} currentFolderId={currentFolderId} />
+      <PropertiesDialog open={propertiesState.open} onOpenChange={(open) => setPropertiesState((s) => ({ ...s, open }))} item={propertiesState.item} />
+      <PreviewDialog open={previewOpen} onOpenChange={(open) => { if (!open) closePreview(); }} item={previewItem} previewUrl={previewUrl} isLoading={previewLoading} isError={previewError} />
     </div>
   );
 }

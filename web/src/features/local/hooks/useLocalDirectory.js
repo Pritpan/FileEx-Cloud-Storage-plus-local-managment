@@ -123,6 +123,28 @@ export function useLocalDirectory() {
     if (currentPath) loadDirectory(currentPath);
   }, [currentPath, loadDirectory]);
 
+  // ── Reset to platform root (called when Local tab is clicked) ────────────
+  // Fetches the OS-native default root (C:\ on Windows, / on Unix) via IPC
+  // rather than hard-coding any path in React.
+  const resetToRoot = useCallback(async () => {
+    if (!window.electronAPI) return;
+    try {
+      const result = await window.electronAPI.getDefaultRoot();
+      if (result.success) {
+        const { path: rootPath, label } = result.data;
+        setCurrentPath(rootPath);
+        setBreadcrumbs([
+          { label: 'This PC', path: null },
+          { label, path: rootPath },
+        ]);
+        setError(null);
+        loadDirectory(rootPath);
+      }
+    } catch (err) {
+      console.error('[useLocalDirectory] resetToRoot failed:', err);
+    }
+  }, [loadDirectory]);
+
   return {
     currentPath,
     entries,
@@ -133,5 +155,6 @@ export function useLocalDirectory() {
     navigateTo,
     navigateToBreadcrumb,
     refresh,
+    resetToRoot,
   };
 }

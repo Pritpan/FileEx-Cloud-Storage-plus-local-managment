@@ -77,12 +77,12 @@ export function SettingsPage() {
 
         {/* ── Profile Card ── */}
         <Card className="border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden">
-          <div className="h-32 bg-gradient-to-r from-brand-600 to-indigo-600" />
+          <div className="h-20 bg-brand-600 dark:bg-brand-700" />
           <CardContent className="px-8 pb-8 pt-0 relative">
             <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-12 md:-mt-16 mb-6">
               <Avatar className="w-24 h-24 md:w-32 md:h-32 border-4 border-surface-0 dark:border-surface-900 shadow-sm">
                 <AvatarImage src="" />
-                <AvatarFallback className="text-3xl bg-brand-100 text-brand-700 font-bold">
+                <AvatarFallback className="text-3xl bg-brand-100 text-brand-600 font-bold">
                   {getInitials(profile?.name)}
                 </AvatarFallback>
               </Avatar>
@@ -122,7 +122,7 @@ export function SettingsPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-surface-500">Current Plan</span>
-                    <Badge variant="secondary" className="bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-400">Free Tier</Badge>
+                    <Badge variant="secondary" className="bg-brand-100 text-brand-600 dark:bg-brand-900/40 dark:text-brand-400">Free Tier</Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-surface-500">Storage Used</span>
@@ -134,7 +134,7 @@ export function SettingsPage() {
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-4 flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-emerald-600" /> Security Status
+                  <Shield className="w-4 h-4 text-success" /> Security Status
                 </h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">

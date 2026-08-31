@@ -16,8 +16,8 @@ export function StorageBar({ collapsed }) {
 
   if (isLoading) {
     return (
-      <div className="px-4 py-4 border-t border-surface-200 dark:border-surface-800 flex justify-center">
-        <Loader2 className="w-4 h-4 animate-spin text-surface-400" />
+      <div className="px-4 py-4 border-t border-surface-300 dark:border-surface-700 flex justify-center">
+        <Loader2 className="w-4 h-4 animate-spin text-brand-600" />
       </div>
     );
   }
@@ -30,7 +30,7 @@ export function StorageBar({ collapsed }) {
   if (collapsed) {
     return (
       <div
-        className="px-3 py-4 border-t border-surface-200 dark:border-surface-800"
+        className="px-3 py-4 border-t border-surface-300 dark:border-surface-700"
         title={`${formatBytes(usedBytes)} of ${formatBytes(totalBytes)} used`}
       >
         <Progress value={percentage} className="h-1.5" />
@@ -39,9 +39,9 @@ export function StorageBar({ collapsed }) {
   }
 
   return (
-    <div className="px-4 py-5 border-t border-surface-200 dark:border-surface-800">
+    <div className="px-4 py-5 border-t border-surface-300 dark:border-surface-700">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-surface-700 dark:text-surface-300">Storage</span>
+        <span className="text-sm font-medium text-surface-600 dark:text-surface-100">Storage</span>
         <span className="text-xs text-surface-500 dark:text-surface-400">
           {formatBytes(usedBytes)} / {formatBytes(totalBytes)}
         </span>

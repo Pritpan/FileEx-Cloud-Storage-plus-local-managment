@@ -1,8 +1,7 @@
-import { ChevronRight, Home } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
@@ -10,31 +9,33 @@ import {
 
 export function BreadcrumbNav({ items, onNavigate }) {
   return (
-    <div className="px-6 py-3 border-b border-surface-200 dark:border-surface-800 bg-surface-50/50 dark:bg-surface-900/50">
+    <div className="px-5 py-2 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900 shrink-0">
       <Breadcrumb>
         <BreadcrumbList>
           {items.map((item, index) => {
             const isLast = index === items.length - 1;
-            
             return (
-              <div key={item.id} className="flex items-center">
+              <div key={item.id ?? item.label} className="flex items-center">
                 <BreadcrumbItem>
                   {isLast ? (
-                    <BreadcrumbPage className="font-medium text-surface-900 dark:text-surface-100">
+                    <BreadcrumbPage className="text-sm font-medium text-brand-600 dark:text-brand-400">
                       {item.label}
                     </BreadcrumbPage>
                   ) : (
                     <button
                       type="button"
                       onClick={() => onNavigate && onNavigate(item, index)}
-                      className="flex items-center text-surface-600 hover:text-surface-900 dark:text-surface-400 dark:hover:text-surface-100"
+                      className="text-sm text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-100 transition-colors"
                     >
-                      {index === 0 && <Home className="w-4 h-4 mr-1.5" />}
                       {item.label}
                     </button>
                   )}
                 </BreadcrumbItem>
-                {!isLast && <BreadcrumbSeparator className="mx-2"><ChevronRight className="w-4 h-4" /></BreadcrumbSeparator>}
+                {!isLast && (
+                  <BreadcrumbSeparator className="mx-1.5">
+                    <ChevronRight className="w-3.5 h-3.5 text-surface-400" />
+                  </BreadcrumbSeparator>
+                )}
               </div>
             );
           })}

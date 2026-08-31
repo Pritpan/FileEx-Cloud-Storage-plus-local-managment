@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { getItemIcon, formatBytes, formatDate } from './ExplorerItem';
 import { Pencil, FolderInput, Trash2, MoreVertical, Eye, Download, FileText } from 'lucide-react';
 import {
@@ -71,6 +71,14 @@ function ExplorerTableRow({
 }) {
   const isFolder = item.type === 'FOLDER';
   const [isDragOver, setIsDragOver] = useState(false);
+  const hoverTimeout = useRef(null);
+
+  const clearHoverTimeout = () => {
+    if (hoverTimeout.current) {
+      clearTimeout(hoverTimeout.current);
+      hoverTimeout.current = null;
+    }
+  };
 
   return (
     <TableRow
@@ -95,25 +103,36 @@ function ExplorerTableRow({
         e.stopPropagation();
         e.dataTransfer.dropEffect = 'copy';
         setIsDragOver(true);
+        
+        if (!hoverTimeout.current) {
+          hoverTimeout.current = setTimeout(() => {
+            onDoubleClick?.(item);
+            hoverTimeout.current = null;
+            setIsDragOver(false);
+          }, 600);
+        }
       }}
       onDragLeave={(e) => {
         if (!isFolder) return;
         e.preventDefault();
         e.stopPropagation();
         setIsDragOver(false);
+        clearHoverTimeout();
       }}
+      onDragEnd={clearHoverTimeout}
       onDrop={(e) => {
         if (!isFolder) return;
         e.preventDefault();
         e.stopPropagation();
         setIsDragOver(false);
+        clearHoverTimeout();
         onDropItem?.(e, item);
       }}
       className={[
-        'cursor-pointer transition-colors group select-none border-surface-200 dark:border-surface-800',
+        'cursor-pointer transition-colors group select-none border-surface-300 dark:border-surface-700',
         isDragOver
-          ? 'bg-brand-50/50 dark:bg-brand-900/20 ring-1 ring-brand-500'
-          : 'hover:bg-surface-50 dark:hover:bg-surface-800/50'
+          ? 'bg-brand-50/50 dark:bg-brand-900/30 ring-1 ring-brand-600'
+          : 'hover:bg-surface-100 dark:hover:bg-surface-700/40'
       ].join(' ')}
     >
       <TableCell className="font-medium">
@@ -146,7 +165,10 @@ function ExplorerTableRow({
                   <Eye className="w-4 h-4 mr-2" />
                   Preview
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDownload(item)}>
+                <DropdownMenuItem 
+                  onClick={() => onDownload(item)}
+                  className="focus:bg-earth-50 dark:focus:bg-earth-900 focus:text-earth-600"
+                >
                   <Download className="w-4 h-4 mr-2" />
                   Download
                 </DropdownMenuItem>

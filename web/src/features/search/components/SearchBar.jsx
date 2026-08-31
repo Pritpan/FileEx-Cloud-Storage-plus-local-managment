@@ -29,7 +29,7 @@ export function SearchBar({ query, onChange, onClear, isLoading }) {
         onChange={(e) => onChange(e.target.value)}
         placeholder="Search files and folders…"
         autoComplete="off"
-        className="pl-9 pr-8 bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-800 focus-visible:ring-brand-500 transition-all"
+        className="pl-9 pr-8 bg-surface-50 dark:bg-surface-900 border-surface-300 dark:border-surface-700 text-surface-900 dark:text-surface-100 placeholder:text-surface-400 dark:placeholder:text-surface-500 focus-visible:ring-brand-600 transition-all"
       />
 
       {/* Clear button — only visible when there is text */}

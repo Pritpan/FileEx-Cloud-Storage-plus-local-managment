@@ -1,46 +1,26 @@
 /**
- * LocalExplorerPage.jsx — E5/E6 Local Explorer (fully revised)
+ * LocalExplorerPage.jsx — E5/E6/E6.3 Local Explorer
+ *
+ * E6.3 additions:
+ *   1. LOCAL SEARCH — SearchBar + useLocalSearch + debounce (400ms, min 2 chars)
+ *      Recursive within current directory (Main Process, max depth 6, max 200 results)
+ *   2. RIGHT-CLICK CONTEXT MENU — handled inline per-item in LocalExplorerItem /
+ *      LocalExplorerTableRow (ContextMenu wraps each item directly)
+ *   3. ROOT RESET ON TAB CLICK — calls resetToRoot() on mount via IPC
+ *      getDefaultRoot() → C:\ on Windows, / on Unix (no hard-coded paths in React)
  *
  * Interaction model:
- *   Single click  → select item (visual highlight)
- *   Double click  → open (navigate folder / OS-open file via shell.openPath)
- *   Right click   → context menu (Open, Upload to Cloud, Copy, Cut,
- *                   Rename, Delete, Properties)
- *
- * Upload to Cloud:
- *   Uses the selected item's _local.path directly.
- *   Does NOT re-open a file picker.
- *   Calls E6 uploadLocalToCloud(path, name, mime, size, cloudFolderId).
- *
- * Cloud destination for uploads:
- *   currentCloudFolderId prop — the cloud folder currently open in the
- *   Cloud Explorer pane. When no cloud folder is selected this is null
- *   which means the cloud root ("My Files"). This is the simplest UX
- *   that avoids a separate folder-picker dialog.
- *
- * Copy / Cut / Paste:
- *   Application-level clipboard (useLocalClipboard).
- *   NOT the OS clipboard. State is session-only.
- *
- * Empty-area context menu:
- *   Right-click on the page background:
- *     New Folder | Paste | Refresh
- *
- * Keyboard shortcuts:
- *   Enter  → open selected item
- *   F2     → rename selected item
- *   Delete → delete selected item
- *   Ctrl+C → copy selected item
- *   Ctrl+X → cut selected item
- *   Ctrl+V → paste
+ *   Single click  → select item
+ *   Double click  → open (navigate folder / OS-open file)
+ *   Right click   → per-item ContextMenu (item-level) or background ContextMenu
  *
  * Security:
  *   All local-native operations go through window.electronAPI.
- *   No fs, shell, ipcRenderer, or Node APIs in React.
+ *   No fs, path, shell, ipcRenderer, or Node APIs in React.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FolderPlus, LayoutGrid, List, RefreshCw, ClipboardPaste, UploadCloud } from 'lucide-react';
+import { Monitor, FolderPlus, LayoutGrid, List, RefreshCw, ClipboardPaste, UploadCloud, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem,
@@ -52,8 +32,12 @@ import { LoadingSkeleton } from '@/features/explorer/components/LoadingSkeleton'
 import { ErrorState } from '@/features/explorer/components/ErrorState';
 import { UploadQueue } from '@/features/upload/components/UploadQueue';
 import { useTransfers } from '@/features/upload/hooks/useTransfers';
+import { SearchBar } from '@/features/search/components/SearchBar';
+import { useDebounce } from '@/hooks/useDebounce';
+import { EnvironmentBanner } from '@/components/environment/EnvironmentBanner';
 import { useLocalDirectory } from '../hooks/useLocalDirectory';
 import { useLocalClipboard } from '../hooks/useLocalClipboard';
+import { useLocalSearch } from '../hooks/useLocalSearch';
 import { mimeFromPath } from '../utils/mimeFromPath';
 import { DriveList } from '../components/DriveList';
 import { LocalExplorerGrid } from '../components/LocalExplorerGrid';
@@ -77,22 +61,37 @@ function NotElectronGuard() {
   );
 }
 
-// ── Empty folder state ───────────────────────────────────────────────────
+// ── Empty folder state ─────────────────────────────────────────────────────
 function LocalEmptyState({ onNewFolder }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center h-full">
       <div className="w-20 h-20 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mb-6">
         <FolderPlus className="w-10 h-10 text-surface-400 dark:text-surface-500" />
       </div>
-      <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-2">
+      <h3 className="text-lg font-medium text-surface-600 dark:text-surface-100 mb-2">
         This folder is empty
       </h3>
       <p className="text-sm text-surface-500 dark:text-surface-400 max-w-sm mb-6">
         Create a new folder or upload files here.
       </p>
-      <Button variant="outline" onClick={onNewFolder}>
-        New Folder
-      </Button>
+      <Button variant="outline" onClick={onNewFolder}>New Folder</Button>
+    </div>
+  );
+}
+
+// ── Search empty state ─────────────────────────────────────────────────────
+function LocalSearchEmptyState({ query }) {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center h-full">
+      <div className="w-20 h-20 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mb-6">
+        <FileText className="w-10 h-10 text-surface-400 dark:text-surface-500" />
+      </div>
+      <h3 className="text-lg font-medium text-surface-600 dark:text-surface-100 mb-2">
+        No results for "{query}"
+      </h3>
+      <p className="text-sm text-surface-500 dark:text-surface-400 max-w-sm">
+        Try a different search term or navigate to a different folder.
+      </p>
     </div>
   );
 }
@@ -100,63 +99,79 @@ function LocalEmptyState({ onNewFolder }) {
 // ── Main component ─────────────────────────────────────────────────────────
 /**
  * @param {{ currentCloudFolderId?: number|null }} props
- *   currentCloudFolderId — cloud folder ID for the "Upload to Cloud" destination.
- *   Null → cloud root. Set by the parent layout/router from ExplorerStore.
  */
 export function LocalExplorerPage({ currentCloudFolderId = null }) {
   const pageRef = useRef(null);
 
-  // ── View ──────────────────────────────────────────────────────────────────
-  // Guard — detect Electron environment BEFORE hooks are conditionally called.
-  // We call all hooks unconditionally, then return early from render.
-  // This satisfies React's Rules of Hooks (hooks called in the same order every render).
+  // Guard — all hooks run unconditionally; return early from render if not Electron
   const isElectron = Boolean(window.electronAPI);
 
   const [viewMode, setViewMode] = useState('grid');
 
-  // ── Selection ─────────────────────────────────────────────────────────────
+  // ── Selection ──────────────────────────────────────────────────────────────
   const [selectedItem, setSelectedItem] = useState(null);
 
-  // ── Dialogs ───────────────────────────────────────────────────────────────
+  // ── Search state ───────────────────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedQuery = useDebounce(searchQuery, 400);
+  const isSearchMode = debouncedQuery.trim().length >= 2;
+
+  // ── Dialogs ────────────────────────────────────────────────────────────────
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [renameState,      setRenameState]      = useState({ open: false, item: null });
   const [deleteState,      setDeleteState]      = useState({ open: false, item: null });
   const [propertiesState,  setPropertiesState]  = useState({ open: false, item: null });
 
-  // ── Hooks ─────────────────────────────────────────────────────────────────
+  // ── Hooks ──────────────────────────────────────────────────────────────────
   const { uploadLocalToCloud, downloadCloudToLocal } = useTransfers();
   const { clipboard, copy, cut, paste, hasPaste } = useLocalClipboard();
 
   const {
     currentPath, entries, drives, breadcrumbs,
-    loading, error, navigateTo, navigateToBreadcrumb, refresh,
+    loading, error, navigateTo, navigateToBreadcrumb, refresh, resetToRoot,
   } = useLocalDirectory();
 
-  // ── Clear selection when navigating ──────────────────────────────────────
+  // ── Local search ───────────────────────────────────────────────────────────
+  const {
+    results: searchResults,
+    isLoading: isSearchLoading,
+    isError: isSearchError,
+  } = useLocalSearch(currentPath, debouncedQuery);
+
+  // ── Root reset on mount ────────────────────────────────────────────────────
+  // Every time the user navigates to /local (this component mounts), reset
+  // to the platform root via IPC getDefaultRoot() — no hard-coded C:\ in React.
+  useEffect(() => {
+    if (isElectron) {
+      resetToRoot();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally empty: run only on first mount per navigation
+
+  // ── Clear selection and search when navigating ─────────────────────────────
   useEffect(() => {
     setSelectedItem(null);
+    setSearchQuery('');
   }, [currentPath]);
 
-
-  // ── Open (double-click) ───────────────────────────────────────────────────
+  // ── Open (double-click) ────────────────────────────────────────────────────
   const handleOpen = useCallback(async (item) => {
     if (item.type === 'FOLDER') {
       navigateTo(item._local.path, item.displayName);
       return;
     }
-    // File: open with OS default application
     const result = await window.electronAPI.openPath(item._local.path);
     if (!result.success) {
       toast.error(`Could not open "${item.displayName}": ${result.error?.message ?? 'Unknown error'}`);
     }
   }, [navigateTo]);
 
-  // ── Select (single click) ─────────────────────────────────────────────────
+  // ── Select (single click) ──────────────────────────────────────────────────
   const handleSelect = useCallback((item) => {
     setSelectedItem((prev) => (prev?.id === item.id ? null : item));
   }, []);
 
-  // ── Upload to Cloud (uses already-selected item, NO file picker) ──────────
+  // ── Upload to Cloud ────────────────────────────────────────────────────────
   const handleUploadToCloud = useCallback(async (item) => {
     if (!item || item.type === 'FOLDER') {
       toast.warning('Folder upload is not yet supported. Select individual files.');
@@ -167,7 +182,7 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
     await uploadLocalToCloud(localPath, fileName, mimeType, fileSize, currentCloudFolderId);
   }, [uploadLocalToCloud, currentCloudFolderId]);
 
-  // ── Toolbar "Upload" button: requires a selected file ────────────────────
+  // ── Toolbar Upload button ──────────────────────────────────────────────────
   const handleToolbarUpload = useCallback(async () => {
     if (!selectedItem) {
       toast.info('Select a file first, then click Upload to Cloud.');
@@ -176,12 +191,11 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
     await handleUploadToCloud(selectedItem);
   }, [selectedItem, handleUploadToCloud]);
 
-  // ── Cross-Pane Drag & Drop (Cloud → Local) ───────────────────────────────
+  // ── Cross-Pane Drag & Drop (Cloud → Local) ─────────────────────────────────
   const handleCloudToLocalDrop = useCallback(async (dataStr, targetDirPath) => {
     try {
       const data = JSON.parse(dataStr);
       if (data.type !== 'CLOUD_FILE') return;
-      // Synthesize a cloud item object that downloadCloudToLocal expects
       const cloudItem = { id: data.id, displayName: data.name, size: data.size, type: 'FILE' };
       await downloadCloudToLocal(cloudItem, refresh, targetDirPath);
     } catch (err) {
@@ -202,65 +216,39 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
     handleCloudToLocalDrop(dataStr, currentPath);
   }, [handleCloudToLocalDrop, currentPath]);
 
+  // ── Rename / Delete / Properties ───────────────────────────────────────────
+  const handleRename = useCallback((item) => setRenameState({ open: true, item }), []);
+  const handleDelete = useCallback((item) => setDeleteState({ open: true, item }), []);
+  const handleProperties = useCallback((item) => setPropertiesState({ open: true, item }), []);
 
-  // ── Rename ─────────────────────────────────────────────────────────────────
-  const handleRename = useCallback((item) => {
-    setRenameState({ open: true, item });
-  }, []);
-
-  // ── Delete ─────────────────────────────────────────────────────────────────
-  const handleDelete = useCallback((item) => {
-    setDeleteState({ open: true, item });
-  }, []);
-
-  // ── Properties ────────────────────────────────────────────────────────────
-  const handleProperties = useCallback((item) => {
-    setPropertiesState({ open: true, item });
-  }, []);
-
-  // ── Paste (background click) ───────────────────────────────────────────────
+  // ── Paste ──────────────────────────────────────────────────────────────────
   const handlePaste = useCallback(() => {
     if (currentPath) paste(currentPath, refresh);
   }, [paste, currentPath, refresh]);
 
-  // ── Keyboard shortcuts ────────────────────────────────────────────────────
+  // ── Keyboard shortcuts ─────────────────────────────────────────────────────
   useEffect(() => {
     const el = pageRef.current;
     if (!el) return;
 
     const onKey = (e) => {
-      // Don't steal shortcuts when a dialog/input is focused
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (document.querySelector('[data-state="open"][role="dialog"]')) return;
 
       const sel = selectedItem;
-
-      if (e.key === 'Enter' && sel) {
-        e.preventDefault();
-        handleOpen(sel);
-      } else if (e.key === 'F2' && sel) {
-        e.preventDefault();
-        handleRename(sel);
-      } else if (e.key === 'Delete' && sel) {
-        e.preventDefault();
-        handleDelete(sel);
-      } else if (e.ctrlKey && e.key === 'c' && sel) {
-        e.preventDefault();
-        copy(sel);
-      } else if (e.ctrlKey && e.key === 'x' && sel) {
-        e.preventDefault();
-        cut(sel);
-      } else if (e.ctrlKey && e.key === 'v' && currentPath) {
-        e.preventDefault();
-        handlePaste();
-      }
+      if (e.key === 'Enter' && sel)           { e.preventDefault(); handleOpen(sel); }
+      else if (e.key === 'F2' && sel)         { e.preventDefault(); handleRename(sel); }
+      else if (e.key === 'Delete' && sel)     { e.preventDefault(); handleDelete(sel); }
+      else if (e.ctrlKey && e.key === 'c' && sel) { e.preventDefault(); copy(sel); }
+      else if (e.ctrlKey && e.key === 'x' && sel) { e.preventDefault(); cut(sel); }
+      else if (e.ctrlKey && e.key === 'v' && currentPath) { e.preventDefault(); handlePaste(); }
     };
 
     el.addEventListener('keydown', onKey);
     return () => el.removeEventListener('keydown', onKey);
   }, [selectedItem, currentPath, handleOpen, handleRename, handleDelete, copy, cut, handlePaste]);
 
-  // ── Shared action props for both grid and table ───────────────────────────
+  // ── Shared action props for grid and table ─────────────────────────────────
   const itemActionProps = {
     selectedId:      selectedItem?.id ?? null,
     onSelect:        handleSelect,
@@ -274,16 +262,24 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
     onDropItem:      handleDropItem,
   };
 
-  // ── Content body ──────────────────────────────────────────────────────────
+  // ── Content body ───────────────────────────────────────────────────────────
   const renderBody = () => {
     if (currentPath === null) {
       return <DriveList drives={drives} onSelect={navigateTo} />;
     }
+
+    if (isSearchMode) {
+      if (isSearchLoading) return <LoadingSkeleton viewMode={viewMode} />;
+      if (isSearchError)   return <ErrorState message="Search failed. Try again." onRetry={() => {}} />;
+      if (searchResults.length === 0) return <LocalSearchEmptyState query={debouncedQuery} />;
+      return viewMode === 'grid'
+        ? <LocalExplorerGrid  items={searchResults} {...itemActionProps} />
+        : <LocalExplorerTable items={searchResults} {...itemActionProps} />;
+    }
+
     if (loading) return <LoadingSkeleton viewMode={viewMode} />;
     if (error)   return <ErrorState message={error} onRetry={refresh} />;
-    if (entries.length === 0) {
-      return <LocalEmptyState onNewFolder={() => setCreateFolderOpen(true)} />;
-    }
+    if (entries.length === 0) return <LocalEmptyState onNewFolder={() => setCreateFolderOpen(true)} />;
     return viewMode === 'grid'
       ? <LocalExplorerGrid  items={entries} {...itemActionProps} />
       : <LocalExplorerTable items={entries} {...itemActionProps} />;
@@ -291,21 +287,20 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
 
   const [isDragOver, setIsDragOver] = useState(false);
 
-  // ── Render ────────────────────────────────────────────────────────────────
-  // Guard here — after all hooks — so React Rules of Hooks are satisfied
   if (!isElectron) return <NotElectronGuard />;
 
   return (
+    // Page-level ContextMenu handles background right-click only.
+    // Item right-clicks are handled inline inside LocalExplorerItem / LocalExplorerTableRow.
     <ContextMenu>
       <ContextMenuTrigger asChild>
-        {/* tabIndex makes the div keyboard-focusable for shortcut listeners */}
         <div
           ref={pageRef}
           tabIndex={-1}
           className="flex flex-col h-full w-full bg-surface-50 dark:bg-surface-950 outline-none relative"
-          onClick={() => setSelectedItem(null)} // click on empty space deselects
+          onClick={() => setSelectedItem(null)}
           onDragOver={(e) => {
-            if (!currentPath) return; // Prevent drop on drive list
+            if (!currentPath) return;
             e.preventDefault();
             e.stopPropagation();
             e.dataTransfer.dropEffect = 'copy';
@@ -324,39 +319,49 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
             handleDropPage(e);
           }}
         >
-          {/* Drag Overlay for Page */}
+          {/* Drag Overlay — Earth accent (incoming Cloud→Local download) */}
           {isDragOver && (
-            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-brand-50/90 dark:bg-brand-950/90 backdrop-blur-sm border-2 border-dashed border-brand-500 m-2 rounded-xl pointer-events-none">
-              <div className="bg-surface-0 dark:bg-surface-900 p-6 rounded-full shadow-lg mb-4">
-                <UploadCloud className="w-12 h-12 text-brand-600 dark:text-brand-400" />
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-earth-50/95 dark:bg-earth-900/90 backdrop-blur-sm border-2 border-dashed border-earth-600 m-2 rounded-lg pointer-events-none">
+              <div className="bg-surface-0 dark:bg-surface-800 p-5 rounded-full shadow-sm mb-4">
+                <UploadCloud className="w-10 h-10 text-earth-600" />
               </div>
-              <h3 className="text-2xl font-bold text-brand-900 dark:text-brand-100">Drop to Download</h3>
-              <p className="text-brand-700 dark:text-brand-300 mt-2">File will be downloaded to the current local folder</p>
+              <h3 className="text-lg font-semibold text-earth-600 dark:text-earth-400">Drop to Download</h3>
+              <p className="text-earth-600/70 dark:text-earth-400/70 mt-1 text-sm">File will be saved to the current local folder</p>
             </div>
           )}
 
-          {/* ── Toolbar ────────────────────────────────────────────────────── */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-4 px-6 border-b border-surface-200 dark:border-surface-800 bg-surface-0 dark:bg-surface-950">
+          {/* Workspace identity header */}
+          <div className="flex items-center gap-3 px-5 py-2.5 border-b border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 shrink-0">
+            <Monitor className="w-5 h-5 text-brand-600 dark:text-brand-400 shrink-0" />
+            <h1 className="text-base font-semibold text-brand-600 dark:text-brand-400 tracking-tight">Local (Earth)</h1>
+          </div>
+
+          {/* Earth environment banner */}
+          <EnvironmentBanner environment="local" />
+
+          {/* ── Toolbar ── */}
+          <div className="flex items-center justify-between gap-3 py-2 px-4 border-b border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 shrink-0">
             <div className="flex items-center gap-2">
               {currentPath && (
                 <>
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={(e) => { e.stopPropagation(); setCreateFolderOpen(true); }}
-                    className="text-surface-900 dark:text-surface-100 dark:hover:text-white"
                   >
-                    <FolderPlus className="w-4 h-4 mr-2" />
+                    <FolderPlus className="w-4 h-4 mr-1.5" />
                     New Folder
                   </Button>
-
+                  {/* Upload to Cloud — Sky accent (destination = Cloud) */}
                   <Button
                     variant="default"
+                    size="sm"
                     onClick={(e) => { e.stopPropagation(); handleToolbarUpload(); }}
                     disabled={!selectedItem || selectedItem.type === 'FOLDER'}
-                    className="bg-brand-600 hover:bg-brand-700 text-white disabled:opacity-50"
-                    title={selectedItem ? `Upload "${selectedItem.displayName}" to cloud` : 'Select a file first'}
+                    className="bg-sky-600 hover:bg-sky-700 text-white disabled:opacity-40"
+                    title={selectedItem ? `Upload "${selectedItem.displayName}" to Cloud` : 'Select a file first'}
                   >
-                    <UploadCloud className="w-4 h-4 mr-2" />
+                    <UploadCloud className="w-4 h-4 mr-1.5" />
                     {selectedItem && selectedItem.type !== 'FOLDER'
                       ? `Upload "${selectedItem.displayName}"`
                       : 'Upload to Cloud'}
@@ -365,35 +370,62 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
               )}
             </div>
 
-            {currentPath && (
-              <div className="flex items-center border border-surface-200 dark:border-surface-800 rounded-md p-1 bg-surface-50 dark:bg-surface-900">
-                <Button
-                  variant="ghost" size="icon"
-                  className={`h-7 w-7 rounded-sm ${viewMode === 'list' ? 'bg-surface-200 dark:bg-surface-800 shadow-sm' : ''}`}
-                  onClick={() => setViewMode('list')}
-                >
-                  <List className="w-4 h-4 text-surface-700 dark:text-surface-300" />
-                </Button>
-                <Button
-                  variant="ghost" size="icon"
-                  className={`h-7 w-7 rounded-sm ${viewMode === 'grid' ? 'bg-surface-200 dark:bg-surface-800 shadow-sm' : ''}`}
-                  onClick={() => setViewMode('grid')}
-                >
-                  <LayoutGrid className="w-4 h-4 text-surface-700 dark:text-surface-300" />
-                </Button>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              {currentPath && (
+                <SearchBar
+                  query={searchQuery}
+                  onChange={setSearchQuery}
+                  onClear={() => setSearchQuery('')}
+                  isLoading={isSearchLoading && isSearchMode}
+                />
+              )}
+              {currentPath && (
+                <div className="flex items-center border border-surface-300 dark:border-surface-700 rounded-md p-0.5">
+                  <Button
+                    variant="ghost" size="icon"
+                    className={`h-7 w-7 rounded-sm ${
+                      viewMode === 'list'
+                        ? 'bg-brand-50 text-brand-600 dark:bg-brand-900 dark:text-brand-400'
+                        : 'text-surface-500'
+                    }`}
+                    onClick={() => setViewMode('list')}
+                  >
+                    <List className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost" size="icon"
+                    className={`h-7 w-7 rounded-sm ${
+                      viewMode === 'grid'
+                        ? 'bg-brand-50 text-brand-600 dark:bg-brand-900 dark:text-brand-400'
+                        : 'text-surface-500'
+                    }`}
+                    onClick={() => setViewMode('grid')}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* ── Breadcrumbs ─────────────────────────────────────────────────── */}
-          <BreadcrumbNav items={breadcrumbs} onNavigate={navigateToBreadcrumb} />
+          {/* ── Breadcrumbs — hide in search mode ───────────────────────── */}
+          {!isSearchMode && (
+            <BreadcrumbNav items={breadcrumbs} onNavigate={navigateToBreadcrumb} />
+          )}
 
-          {/* ── Content ─────────────────────────────────────────────────────── */}
+          {/* ── Search mode indicator ─────────────────────────────────────── */}
+          {isSearchMode && currentPath && (
+            <div className="px-6 py-2 text-sm text-surface-500 dark:text-surface-400 border-b border-surface-200 dark:border-surface-800 bg-surface-0 dark:bg-surface-950">
+              Searching for <span className="font-semibold text-surface-900 dark:text-surface-100">"{debouncedQuery}"</span> in current folder…
+            </div>
+          )}
+
+          {/* ── Content ──────────────────────────────────────────────────── */}
           <div className="flex-1 overflow-y-auto">
             {renderBody()}
           </div>
 
-          {/* ── Dialogs ─────────────────────────────────────────────────────── */}
+          {/* ── Dialogs ──────────────────────────────────────────────────── */}
           <LocalCreateFolderDialog
             open={createFolderOpen}
             onOpenChange={setCreateFolderOpen}
@@ -417,25 +449,17 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
             onOpenChange={(open) => setPropertiesState((s) => ({ ...s, open }))}
             item={propertiesState.item}
           />
-
-          {/* Transfer progress queue */}
           <UploadQueue />
         </div>
       </ContextMenuTrigger>
 
-      {/* ── Empty-area right-click menu ─────────────────────────────────────── */}
+      {/* ── Background right-click menu ──────────────────────────────────── */}
       <ContextMenuContent className="w-48">
-        <ContextMenuItem
-          onClick={() => setCreateFolderOpen(true)}
-          disabled={!currentPath}
-        >
+        <ContextMenuItem onClick={() => setCreateFolderOpen(true)} disabled={!currentPath}>
           <FolderPlus className="w-4 h-4 mr-2" />
           New Folder
         </ContextMenuItem>
-        <ContextMenuItem
-          onClick={handlePaste}
-          disabled={!hasPaste || !currentPath}
-        >
+        <ContextMenuItem onClick={handlePaste} disabled={!hasPaste || !currentPath}>
           <ClipboardPaste className="w-4 h-4 mr-2" />
           Paste {clipboard.item ? `"${clipboard.item.displayName}"` : ''}
         </ContextMenuItem>

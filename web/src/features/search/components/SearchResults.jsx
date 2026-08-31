@@ -27,7 +27,7 @@ export function SearchResults({
   if (isError) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-20">
-        <AlertTriangle className="w-10 h-10 text-red-400" />
+        <AlertTriangle className="w-10 h-10 text-danger" />
         <p className="text-sm text-surface-500">
           Search failed. Please check your connection and try again.
         </p>
@@ -38,9 +38,9 @@ export function SearchResults({
   if (!results || results.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-20">
-        <SearchX className="w-10 h-10 text-surface-300 dark:text-surface-600" />
+        <SearchX className="w-10 h-10 text-surface-400 dark:text-surface-500" />
         <div>
-          <p className="text-sm font-medium text-surface-700 dark:text-surface-300">
+          <p className="text-sm font-medium text-surface-600 dark:text-surface-100">
             No results for &ldquo;{query}&rdquo;
           </p>
           <p className="text-xs text-surface-400 mt-1">
@@ -67,7 +67,7 @@ export function SearchResults({
       <div className="px-6 pt-4 pb-1">
         <p className="text-xs text-surface-500 dark:text-surface-400">
           {results.length} result{results.length !== 1 ? 's' : ''} for{' '}
-          <span className="font-medium text-surface-700 dark:text-surface-300">
+          <span className="font-medium text-surface-600 dark:text-surface-100">
             &ldquo;{query}&rdquo;
           </span>
         </p>

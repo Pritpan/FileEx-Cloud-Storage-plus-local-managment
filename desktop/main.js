@@ -14,6 +14,7 @@ import {
   deleteEntry,
   copy,
   move,
+  searchFiles,
 } from './filesystem/filesystem.service.js';
 
 // ---------------------------------------------------------------------------
@@ -260,6 +261,55 @@ ipcMain.handle('filesystem:get-home', () => ({
   success: true,
   data: { path: os.homedir() },
 }));
+
+/**
+ * Channel: filesystem:get-default-root
+ *
+ * Returns the default local root path for the current platform.
+ * This is NOT the user's home directory — it is the filesystem root
+ * (C:\ on Windows, / on macOS/Linux).
+ *
+ * The renderer uses this when the Local tab is clicked to always reset
+ * to the root, not to the last visited folder.
+ *
+ * Returns: { success: true, data: { path, label } }
+ */
+ipcMain.handle('filesystem:get-default-root', async () => {
+  try {
+    if (process.platform === 'win32') {
+      // Find the first available drive (almost always C:\)
+      const letters = 'CDEFGHIJKLMNOPQRSTUVWXYZAB'.split('');
+      for (const l of letters) {
+        const drivePath = `${l}:\\`;
+        try {
+          await fs.access(drivePath);
+          return { success: true, data: { path: drivePath, label: `${l}:` } };
+        } catch {
+          // Not available — try next
+        }
+      }
+      // Fallback — should never happen on a working Windows install
+      return { success: true, data: { path: 'C:\\', label: 'C:' } };
+    }
+    // macOS / Linux: root is always '/'
+    return { success: true, data: { path: '/', label: '/' } };
+  } catch (err) {
+    return { success: false, error: { code: 'FS_ERROR', message: err.message } };
+  }
+});
+
+/**
+ * Channel: filesystem:search
+ *
+ * Recursively searches a directory for entries matching a query string.
+ * All traversal happens in the Main Process — React never sees raw fs calls.
+ *
+ * Args: { dirPath: string, query: string }
+ * Returns: { success, data: Array<{ name, path, type, size, modifiedAt }> }
+ */
+ipcMain.handle('filesystem:search', (_event, dirPath, query) =>
+  searchFiles(dirPath, query),
+);
 
 // ---------------------------------------------------------------------------
 // IPC Handlers — E6: Local ↔ Cloud Transfers

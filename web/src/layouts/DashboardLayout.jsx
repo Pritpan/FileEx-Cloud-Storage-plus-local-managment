@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 
@@ -6,8 +6,12 @@ import { Header } from '@/components/layout/Header';
  * DashboardLayout — Layout wrapper for all authenticated pages.
  */
 function DashboardLayout() {
+  const location = useLocation();
+  const isLocal = location.pathname.startsWith('/local');
+  const themeClass = isLocal ? 'theme-local' : 'theme-cloud';
+
   return (
-    <div id="dashboard-layout" className="flex h-screen w-full overflow-hidden bg-surface-0 dark:bg-surface-950">
+    <div id="dashboard-layout" className={`flex h-screen w-full overflow-hidden bg-surface-0 dark:bg-surface-950 ${themeClass}`}>
       <Sidebar />
       <div className="flex flex-col flex-1 min-w-0">
         <Header />

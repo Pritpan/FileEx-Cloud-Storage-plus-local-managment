@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { File, Folder, Image, FileText, FileSpreadsheet, MoreVertical, Pencil, FolderInput, Trash2, Eye, Download } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import {
@@ -70,7 +70,10 @@ function ItemActions({ item, onRename, onMove, onDelete, onProperties, onPreview
               <Eye className="w-4 h-4 mr-2" />
               Preview
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDownload(item)}>
+            <DropdownMenuItem 
+              onClick={() => onDownload(item)}
+              className="focus:bg-earth-50 dark:focus:bg-earth-900 focus:text-earth-600"
+            >
               <Download className="w-4 h-4 mr-2" />
               Download
             </DropdownMenuItem>
@@ -112,6 +115,14 @@ export function ExplorerItem({ item, onRename, onMove, onDelete, onProperties, o
   const isFolder = item.type === 'FOLDER';
   const subtitle = isFolder ? formatDate(item.updatedAt) : formatBytes(item.size);
   const [isDragOver, setIsDragOver] = useState(false);
+  const hoverTimeout = useRef(null);
+
+  const clearHoverTimeout = () => {
+    if (hoverTimeout.current) {
+      clearTimeout(hoverTimeout.current);
+      hoverTimeout.current = null;
+    }
+  };
 
   return (
     <Card 
@@ -135,25 +146,36 @@ export function ExplorerItem({ item, onRename, onMove, onDelete, onProperties, o
         e.stopPropagation();
         e.dataTransfer.dropEffect = 'copy';
         setIsDragOver(true);
+        
+        if (!hoverTimeout.current) {
+          hoverTimeout.current = setTimeout(() => {
+            onDoubleClick?.(item);
+            hoverTimeout.current = null;
+            setIsDragOver(false);
+          }, 600);
+        }
       }}
       onDragLeave={(e) => {
         if (!isFolder) return;
         e.preventDefault();
         e.stopPropagation();
         setIsDragOver(false);
+        clearHoverTimeout();
       }}
+      onDragEnd={clearHoverTimeout}
       onDrop={(e) => {
         if (!isFolder) return;
         e.preventDefault();
         e.stopPropagation();
         setIsDragOver(false);
+        clearHoverTimeout();
         onDropItem?.(e, item);
       }}
       className={[
-        'group relative flex flex-col items-center justify-center p-4 h-40 border transition-colors cursor-pointer shadow-sm select-none',
-        'bg-surface-0 dark:bg-surface-900',
-        'hover:border-brand-300 dark:hover:border-brand-700 hover:bg-brand-50/50 dark:hover:bg-brand-900/10',
-        isDragOver ? 'border-brand-500 ring-2 ring-brand-500 bg-brand-50/50 dark:bg-brand-900/20' : 'border-surface-200 dark:border-surface-800'
+        'group relative flex flex-col items-center justify-center p-3 h-28 rounded-md border transition-colors cursor-pointer shadow-none select-none',
+        'bg-surface-0 dark:bg-surface-800',
+        'hover:border-brand-600/40 dark:hover:border-brand-600/40 hover:bg-surface-100/80 dark:hover:bg-surface-700/30',
+        isDragOver ? 'border-brand-600 ring-2 ring-brand-600/50 bg-brand-50/50 dark:bg-brand-900/30' : 'border-surface-300 dark:border-surface-700'
       ].join(' ')}
       onDoubleClick={() => onDoubleClick && onDoubleClick(item)}
     >

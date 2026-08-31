@@ -8,7 +8,7 @@ export function EmptyState({ onNewFolder, currentFolderId }) {
       <div className="w-20 h-20 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mb-6">
         <FolderOpen className="w-10 h-10 text-surface-400 dark:text-surface-500" />
       </div>
-      <h3 className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-2">
+      <h3 className="text-lg font-medium text-surface-600 dark:text-surface-100 mb-2">
         This folder is empty
       </h3>
       <p className="text-sm text-surface-500 dark:text-surface-400 max-w-sm mb-6">

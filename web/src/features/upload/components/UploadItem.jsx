@@ -20,6 +20,9 @@ export function UploadItem({ upload, onRemove }) {
   // Uploads have a browser File object; downloads pass label + size directly.
   const displayName = file?.name ?? label ?? 'Unknown';
   const displaySize = file?.size ?? size ?? 0;
+  
+  const isDownload = !file;
+  const indicatorColor = isDownload ? 'bg-earth-600' : 'bg-sky-600';
 
   return (
     <div className="flex flex-col gap-2 p-3 bg-surface-0 dark:bg-surface-900 border-b border-surface-200 dark:border-surface-800 last:border-0 relative group">
@@ -57,7 +60,7 @@ export function UploadItem({ upload, onRemove }) {
       </div>
 
       {ACTIVE_STATUSES.includes(status) && (
-        <UploadProgress value={progress} className="mt-1" />
+        <UploadProgress value={progress} className="mt-1" indicatorClassName={indicatorColor} />
       )}
     </div>
   );

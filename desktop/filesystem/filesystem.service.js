@@ -319,3 +319,88 @@ export async function move(sourcePath, destinationPath) {
     return fsErrorEnvelope(err);
   }
 }
+
+// ---------------------------------------------------------------------------
+// 8. searchFiles — E6.3: Local Search
+// ---------------------------------------------------------------------------
+
+/**
+ * searchFiles(dirPath, query, options?)
+ *
+ * Recursively searches `dirPath` for files/folders whose name contains
+ * `query` (case-insensitive).
+ *
+ * Performance constraints enforced in Main Process:
+ *   - maxDepth (default 6): never descends more than 6 levels to prevent
+ *     runaway traversal on large drives.
+ *   - maxResults (default 200): stops after 200 matches so the renderer is
+ *     never flooded.
+ *   - Skips entries it cannot stat (inaccessible system dirs) silently.
+ *
+ * Returns:
+ *   { success: true,  data: Array<{ name, path, type, size, modifiedAt }> }
+ *   { success: false, error: { code, message } }
+ */
+export async function searchFiles(dirPath, query, options = {}) {
+  const { maxDepth = 6, maxResults = 200 } = options;
+
+  let normalized;
+  try {
+    normalized = validatePath(dirPath);
+  } catch {
+    return fail('INVALID_PATH', 'dirPath must be a non-empty string.');
+  }
+
+  if (typeof query !== 'string' || query.trim() === '') {
+    return fail('INVALID_QUERY', 'query must be a non-empty string.');
+  }
+
+  const lowerQuery = query.trim().toLowerCase();
+  const results = [];
+
+  async function walk(currentDir, depth) {
+    if (depth > maxDepth || results.length >= maxResults) return;
+
+    let entries;
+    try {
+      entries = await fs.readdir(currentDir, { withFileTypes: true });
+    } catch {
+      // Permission denied or inaccessible — skip silently
+      return;
+    }
+
+    for (const entry of entries) {
+      if (results.length >= maxResults) break;
+
+      const entryPath = path.join(currentDir, entry.name);
+      const isDir = entry.isDirectory();
+      const isSym = entry.isSymbolicLink();
+      const type  = isSym ? 'symlink' : isDir ? 'folder' : 'file';
+
+      if (entry.name.toLowerCase().includes(lowerQuery)) {
+        let size = 0;
+        let modifiedAt = null;
+        try {
+          const stat = await fs.stat(entryPath);
+          size       = isDir ? 0 : stat.size;
+          modifiedAt = stat.mtime.toISOString();
+        } catch {
+          // Cannot stat — include with null metadata
+        }
+        results.push({ name: entry.name, path: entryPath, type, size, modifiedAt });
+      }
+
+      // Recurse into real directories (not symlinks — avoid cycles)
+      if (isDir && !isSym) {
+        await walk(entryPath, depth + 1);
+      }
+    }
+  }
+
+  try {
+    await walk(normalized, 1);
+    return ok(results);
+  } catch (err) {
+    return fsErrorEnvelope(err);
+  }
+}
