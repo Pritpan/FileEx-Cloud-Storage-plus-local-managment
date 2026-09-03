@@ -7,6 +7,10 @@ import storageRoutes from './modules/storage/index.js';
 
 const app = express();
 
+// Trust the first proxy in front of Express (e.g. NGINX, ALB, Heroku) 
+// This is critical for IP-based rate limiting to function correctly and securely
+app.set('trust proxy', 1);
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);

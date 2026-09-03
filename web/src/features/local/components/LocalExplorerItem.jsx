@@ -12,7 +12,7 @@
  */
 
 import { useState, useRef } from 'react';
-import { getItemIcon, formatBytes, formatDate } from '@/features/explorer/components/ExplorerItem';
+import { getItemIcon, getFileTypeLabel, formatBytes } from '@/features/explorer/components/ExplorerItem';
 import { Card } from '@/components/ui/card';
 import {
   ContextMenu,
@@ -47,7 +47,8 @@ export function LocalExplorerItem({
   onDropItem,
 }) {
   const isFolder = item.type === 'FOLDER';
-  const subtitle = isFolder ? formatDate(item.updatedAt) : formatBytes(item.size);
+  // Subtitle: type label for folders, size for files
+  const subtitle  = isFolder ? getFileTypeLabel(item) : formatBytes(item._local?.size ?? item.size);
   const [isDragOver, setIsDragOver] = useState(false);
   const hoverTimeout = useRef(null);
 
@@ -104,15 +105,12 @@ export function LocalExplorerItem({
             onDropItem?.(e, item);
           }}
           className={[
-            'group relative flex flex-col items-center justify-center p-3 h-28 rounded-md',
-            'border bg-surface-0 dark:bg-surface-800',
-            'hover:border-brand-600/40 dark:hover:border-brand-600/40',
-            'hover:bg-surface-100/80 dark:hover:bg-surface-700/30',
-            'transition-colors cursor-pointer shadow-none select-none',
+            'glass-card group relative flex flex-col items-center justify-center gap-3 p-4 h-[120px] rounded-xl cursor-pointer select-none transition-all duration-150',
+            'hover:bg-black/5 dark:hover:bg-white/5',
             isSelected
-              ? 'border-brand-600 dark:border-brand-400 ring-2 ring-brand-600/20 dark:ring-brand-400/20 bg-brand-50 dark:bg-brand-900/40'
-              : 'border-surface-300 dark:border-surface-700',
-            isDragOver ? 'ring-2 ring-brand-600/50 bg-brand-50/50 dark:bg-brand-900/30' : '',
+              ? 'ring-2 ring-[#587463]/60 dark:ring-[#587463]/50'
+              : 'hover:border-surface-400/30',
+            isDragOver ? 'ring-2 ring-[#587463]/50' : '',
           ].join(' ')}
           onClick={(e) => { e.stopPropagation(); onSelect?.(item); }}
           onDoubleClick={(e) => { e.stopPropagation(); onOpen?.(item); }}
@@ -164,19 +162,19 @@ export function LocalExplorerItem({
           </DropdownMenu>
 
           {/* ── Icon ────────────────────────────────────────────────────── */}
-          <div className="mb-4 transition-transform group-hover:scale-105">
-            {getItemIcon(item)}
+          <div className="transition-transform duration-150 group-hover:scale-105">
+            {getItemIcon(item, 'w-9 h-9')}
           </div>
 
           {/* ── Name + subtitle ──────────────────────────────────────────── */}
-          <div className="text-center w-full">
+          <div className="text-center w-full px-1">
             <p
-              className="text-sm font-medium text-surface-900 dark:text-surface-100 truncate w-full px-2"
+              className="text-xs font-medium text-surface-900 dark:text-surface-100 truncate leading-tight"
               title={item.displayName}
             >
               {item.displayName}
             </p>
-            <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">{subtitle}</p>
+            <p className="text-[11px] text-foreground/70 dark:text-white/70 mt-0.5">{subtitle}</p>
           </div>
         </Card>
       </ContextMenuTrigger>

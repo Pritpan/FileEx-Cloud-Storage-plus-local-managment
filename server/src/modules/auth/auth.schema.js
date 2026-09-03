@@ -45,3 +45,11 @@ export const UpdateProfileSchema = z.object({
     .max(100, 'Name must not exceed 100 characters.')
     .optional(),
 });
+
+export const ResendVerificationSchema = z.object({
+  email: z
+    .string({ required_error: 'Email is required.' })
+    .trim()
+    .toLowerCase()
+    .email('Please provide a valid email address.'),
+});

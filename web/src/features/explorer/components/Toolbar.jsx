@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { UploadButton } from '@/features/upload/components/UploadButton';
 import { SearchBar } from '@/features/search/components/SearchBar';
 import { useTransfers } from '@/features/upload/hooks/useTransfers';
+import { SortDropdown } from './SortDropdown';
 
 /**
  * Toolbar — compact action bar for the Cloud explorer.
@@ -19,12 +20,15 @@ export function Toolbar({
   onSearchClear,
   isSearching,
   selectedItem,
+  sortBy,
+  sortDirection,
+  onSortChange,
 }) {
   const { downloadCloudToLocal } = useTransfers();
   const canDownload = selectedItem && selectedItem.type !== 'FOLDER' && window.electronAPI;
 
   return (
-    <div className="flex items-center justify-between gap-3 py-2 px-4 border-b border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 shrink-0">
+    <div className="glass-toolbar flex items-center justify-between gap-3 py-2 px-4 shrink-0">
       {/* Left actions */}
       <div className="flex items-center gap-2">
         <Button
@@ -41,22 +45,25 @@ export function Toolbar({
 
       {/* Right: destination action + view controls + search */}
       <div className="flex items-center gap-2">
-        {/* Download to Local — only in Electron, Sky→Earth destination */}
+        {/* Download to Local — primary transfer action for Cloud */}
         {window.electronAPI && (
           <Button
-            variant="outline"
+            variant="default"
             size="sm"
             onClick={() => canDownload && downloadCloudToLocal(selectedItem, null)}
             disabled={!canDownload}
-            className="text-sm border-earth-600/40 text-earth-600 hover:bg-earth-50 hover:text-earth-600 dark:text-earth-400 dark:hover:bg-earth-900/40 disabled:opacity-40"
+            className="text-sm bg-[#587463] hover:bg-[#496455] text-white disabled:opacity-40 max-w-[200px]"
             title={selectedItem ? `Download "${selectedItem?.displayName}" to Local` : 'Select a file first'}
           >
-            <Download className="w-4 h-4 mr-1.5" />
-            {selectedItem && selectedItem.type !== 'FOLDER'
-              ? `Download "${selectedItem.displayName}"`
-              : 'Download to Local'}
+            <Download className="w-4 h-4 mr-1.5 shrink-0" />
+            <span className="truncate block">
+              {selectedItem && selectedItem.type !== 'FOLDER'
+                ? `Download "${selectedItem.displayName}"`
+                : 'Download to Local'}
+            </span>
           </Button>
         )}
+
 
         <SearchBar
           query={searchQuery}
@@ -65,7 +72,9 @@ export function Toolbar({
           isLoading={isSearching}
         />
 
-        <div className="flex items-center border border-surface-300 dark:border-surface-700 rounded-md p-0.5">
+        <div className="flex items-center border border-surface-300 dark:border-surface-700 rounded-md p-0.5 ml-1">
+          <SortDropdown sortBy={sortBy} direction={sortDirection} onChange={onSortChange} />
+          <div className="w-[1px] h-4 bg-surface-300 dark:bg-surface-700 mx-1" />
           <Button
             variant="ghost"
             size="icon"

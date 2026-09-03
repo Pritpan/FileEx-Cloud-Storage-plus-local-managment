@@ -23,10 +23,8 @@ function DriveItem({ drive, onSelect }) {
   return (
     <Card
       className={[
-        "group flex flex-col items-center justify-center p-3 h-28 rounded-md border transition-colors cursor-pointer shadow-none select-none",
-        "bg-surface-0 dark:bg-surface-800",
-        "hover:border-brand-600/40 dark:hover:border-brand-600/40 hover:bg-surface-100/80 dark:hover:bg-surface-700/30",
-        isDragOver ? "border-brand-600 ring-2 ring-brand-600/50 bg-brand-50/50 dark:bg-brand-900/30" : "border-surface-300 dark:border-surface-700"
+        "glass-card group flex flex-col items-center justify-center p-3 h-28 rounded-md transition-colors cursor-pointer shadow-none select-none",
+        isDragOver ? "ring-2 ring-brand-600/50" : ""
       ].join(' ')}
       onDoubleClick={() => onSelect(drive.path, drive.label)}
       onClick={() => onSelect(drive.path, drive.label)}

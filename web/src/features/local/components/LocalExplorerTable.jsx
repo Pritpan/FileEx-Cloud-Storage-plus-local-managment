@@ -11,10 +11,10 @@
  * Selection: single click highlights the row.
  */
 import { useState, useRef } from 'react';
-import { getItemIcon, formatBytes, formatDate } from '@/features/explorer/components/ExplorerItem';
+import { getItemIcon, getFileTypeLabel, formatBytes, formatDate } from '@/features/explorer/components/ExplorerItem';
 import {
   FolderOpen, UploadCloud, Copy, Scissors,
-  Pencil, Trash2, FileText, MoreVertical,
+  Pencil, Trash2, FileText, MoreVertical, ArrowUp, ArrowDown
 } from 'lucide-react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -40,17 +40,49 @@ export function LocalExplorerTable({
   onDelete,
   onProperties,
   onDropItem,
+  sortBy,
+  sortDirection,
+  onSortChange,
 }) {
+  const folders = items.filter((i) => i.type === 'FOLDER').length;
+  const files   = items.length - folders;
+  const totalBytes = items.reduce((s, i) => s + (i._local?.size || i.size || 0), 0);
+
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      onSortChange(field, sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      onSortChange(field, field === 'modified' ? 'desc' : 'asc');
+    }
+  };
+
+  const renderSortIcon = (field) => {
+    if (sortBy !== field) return null;
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="w-3 h-3 ml-1 inline text-brand-500" />
+      : <ArrowDown className="w-3 h-3 ml-1 inline text-brand-500" />;
+  };
+
   return (
-    <div className="px-6 py-4">
-      <div className="border border-surface-200 dark:border-surface-800 rounded-md bg-surface-0 dark:bg-surface-900">
-        <Table>
+    <div className="px-4 py-3 flex flex-col gap-0">
+      <div className="glass-table rounded-lg overflow-hidden">
+        <Table className="table-fixed w-full">
           <TableHeader>
-            <TableRow className="hover:bg-transparent border-surface-200 dark:border-surface-800">
-              <TableHead className="w-[50%]">Name</TableHead>
-              <TableHead>Date Modified</TableHead>
-              <TableHead className="text-right">Size</TableHead>
-              <TableHead className="w-10" />
+            <TableRow className="hover:bg-transparent border-b border-white/20 dark:border-white/10">
+              <TableHead className="w-8 pl-3"><span className="sr-only">Select</span></TableHead>
+              <TableHead className="w-[40%] pl-2 cursor-pointer hover:bg-white/10 dark:hover:bg-white/5 transition-colors" onClick={() => handleSort('name')}>
+                Name {renderSortIcon('name')}
+              </TableHead>
+              <TableHead className="w-[20%] cursor-pointer hover:bg-white/10 dark:hover:bg-white/5 transition-colors" onClick={() => handleSort('type')}>
+                Type {renderSortIcon('type')}
+              </TableHead>
+              <TableHead className="w-[20%] cursor-pointer hover:bg-white/10 dark:hover:bg-white/5 transition-colors" onClick={() => handleSort('modified')}>
+                Date Modified {renderSortIcon('modified')}
+              </TableHead>
+              <TableHead className="w-[14%] text-right cursor-pointer hover:bg-white/10 dark:hover:bg-white/5 transition-colors" onClick={() => handleSort('size')}>
+                Size {renderSortIcon('size')}
+              </TableHead>
+              <TableHead className="w-[6%]" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -72,6 +104,23 @@ export function LocalExplorerTable({
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Status bar */}
+      <div className="flex items-center gap-3 px-3 pt-2 pb-1 text-[11px] text-surface-600 dark:text-surface-400 select-none">
+        <span>{items.length} {items.length === 1 ? 'item' : 'items'}</span>
+        {(folders > 0 || files > 0) && (
+          <>
+            <span className="text-surface-300 dark:text-surface-600">|</span>
+            <span>{folders} {folders === 1 ? 'folder' : 'folders'}, {files} {files === 1 ? 'file' : 'files'}</span>
+          </>
+        )}
+        {totalBytes > 0 && (
+          <>
+            <span className="text-surface-300 dark:text-surface-600">|</span>
+            <span>Total size: {formatBytes(totalBytes)}</span>
+          </>
+        )}
       </div>
     </div>
   );
@@ -150,26 +199,45 @@ function LocalExplorerTableRow({
             onDropItem?.(e, item);
           }}
           className={[
-            'cursor-pointer border-surface-300 dark:border-surface-700 transition-colors group select-none',
+            'cursor-pointer border-b border-white/15 dark:border-white/6 last:border-0 transition-colors group select-none',
             isSelected
-              ? 'bg-brand-50 dark:bg-brand-900/40 hover:bg-brand-100/70 dark:hover:bg-brand-900/60'
-              : 'hover:bg-surface-100 dark:hover:bg-surface-700/40',
-            isDragOver ? 'bg-brand-50/50 dark:bg-brand-900/30' : '',
+              ? 'bg-[#587463]/12 dark:bg-[#587463]/18'
+              : 'hover:bg-white/30 dark:hover:bg-white/5',
+            isDragOver ? 'bg-[#587463]/10' : '',
           ].join(' ')}
         >
-          <TableCell className="font-medium">
-            <div className="flex items-center gap-3">
-              {getItemIcon(item, 'w-5 h-5')}
-              <span className="truncate max-w-[200px] sm:max-w-[300px]">
+          {/* Checkbox */}
+          <TableCell className="pl-3 w-8">
+            <div className={`w-3.5 h-3.5 rounded border transition-colors ${
+              isSelected
+                ? 'border-[#587463] bg-[#587463]'
+                : 'border-surface-300 dark:border-surface-600 group-hover:border-surface-400'
+            }`} />
+          </TableCell>
+
+          {/* Name */}
+          <TableCell className="pl-2 font-medium max-w-0">
+            <div className="flex items-center gap-2.5 min-w-0 w-full">
+              <div className="shrink-0">{getItemIcon(item, 'w-5 h-5')}</div>
+              <span className="truncate text-sm font-medium text-foreground dark:text-white block" title={item.displayName}>
                 {item.displayName}
               </span>
             </div>
           </TableCell>
-          <TableCell className="text-surface-500 dark:text-surface-400">
-            {formatDate(item.updatedAt)}
+
+          {/* Type */}
+          <TableCell className="text-sm text-foreground/80 dark:text-white/80 truncate max-w-0">
+            {getFileTypeLabel(item)}
           </TableCell>
-          <TableCell className="text-right text-surface-500 dark:text-surface-400">
-            {isFolder ? '--' : formatBytes(item.size)}
+
+          {/* Date Modified */}
+          <TableCell className="text-sm text-foreground/80 dark:text-white/80 truncate max-w-0">
+            {item._local?.modifiedAt ? formatDate(item._local.modifiedAt) : '--'}
+          </TableCell>
+
+          {/* Size */}
+          <TableCell className="text-sm text-right text-foreground/80 dark:text-white/80 truncate max-w-0">
+            {isFolder ? '—' : formatBytes(item._local?.size ?? item.size)}
           </TableCell>
           <TableCell>
             {/* Three-dot dropdown */}

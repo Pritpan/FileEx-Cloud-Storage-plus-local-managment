@@ -24,12 +24,14 @@ model User {
   email          String   @unique @db.VarChar(255)
   hashedPassword String
   avatarUrl      String?
+  emailVerified  Boolean  @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  refreshTokens  RefreshToken[]
-  files          File[]
-  storageStats   StorageStats?
+  refreshTokens        RefreshToken[]
+  files                File[]
+  storageStats         StorageStats?
+  emailVerifyTokens    EmailVerificationToken[]
 
   @@map("users")
 }
@@ -46,6 +48,20 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique @db.VarChar(64)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
 }
 
 model File {

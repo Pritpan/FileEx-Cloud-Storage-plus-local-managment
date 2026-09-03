@@ -30,13 +30,13 @@ export function Header() {
   };
 
   return (
-    <header className="h-12 border-b border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 flex items-center justify-end px-4 shrink-0 gap-2">
+    <header className="glass-header h-12 flex items-center justify-end px-4 shrink-0 gap-2">
       {/* Dark mode toggle */}
       <Button
         variant="ghost"
         size="icon"
         onClick={toggleTheme}
-        className="h-8 w-8 text-surface-400 hover:text-surface-600 dark:hover:text-surface-100"
+        className="h-8 w-8 text-foreground/60 dark:text-white/60 hover:text-foreground dark:hover:text-white"
         aria-label="Toggle dark mode"
       >
         {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -51,7 +51,7 @@ export function Header() {
               {getInitials(user?.name)}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden lg:block text-sm font-medium text-surface-600 dark:text-surface-100 max-w-[100px] truncate">
+          <span className="hidden lg:block text-sm font-medium text-foreground/80 dark:text-white/80 max-w-[100px] truncate">
             {user?.name || 'User'}
           </span>
         </DropdownMenuTrigger>

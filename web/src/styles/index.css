@@ -116,6 +116,24 @@
   --sidebar-foreground: #E6EBE7;
   --sidebar-border: #343C38;
   --sidebar-accent-foreground: #E6EBE7;
+
+  /* ── Dark mode surface scale override ──────────────────────────
+     In dark mode: low numbers = dark backgrounds, high numbers = lighter text.
+     This ensures text-surface-900 dark:text-surface-100 always produces:
+       light mode → near-black text (surface-900 = #1A1F1A)
+       dark mode  → near-white text (surface-100 = #E6EBE7)          */
+  --color-surface-0:   #141817;
+  --color-surface-50:  #1B201E;
+  --color-surface-100: #E6EBE7;
+  --color-surface-200: #C8D0CB;
+  --color-surface-300: #A4AFA8;
+  --color-surface-400: #8A9690;
+  --color-surface-500: #727D78;
+  --color-surface-600: #A4AFA8;
+  --color-surface-700: #C8D0CB;
+  --color-surface-800: #DDE3DF;
+  --color-surface-900: #F0F4F1;
+  --color-surface-950: #FFFFFF;
 }
 
 /* ============================================================
@@ -156,19 +174,21 @@
   --font-sans: 'Inter Variable', 'Geist Variable', system-ui, -apple-system, sans-serif;
   --font-heading: var(--font-sans);
 
-  /* ── Surface Scale ─────────────────────────────────────────── */
-  --color-surface-0:   var(--card);
+  /* ── Surface Scale (corrected: higher = darker in light mode) ── */
+  /* Light: 0=white card, 50=page bg, 100=subtle bg, 400/500=muted text,
+            600=secondary text, 700=primary text, 800=stronger text, 900=near-black */
+  --color-surface-0:   #FFFFFF;
   --color-surface-50:  var(--background);
   --color-surface-100: var(--secondary);
   --color-surface-200: var(--border-subtle);
   --color-surface-300: var(--border);
-  --color-surface-400: var(--muted-foreground);
-  --color-surface-500: var(--muted-foreground);
-  --color-surface-600: var(--foreground);
-  --color-surface-700: var(--border);
-  --color-surface-800: var(--secondary);
-  --color-surface-900: var(--card);
-  --color-surface-950: var(--background);
+  --color-surface-400: #9BA59F;
+  --color-surface-500: #727771;
+  --color-surface-600: #515650;
+  --color-surface-700: #383D38;
+  --color-surface-800: #292E29;
+  --color-surface-900: #1A1F1A;
+  --color-surface-950: #0F130F;
 
   /* ── Dynamic Brand (follows active location theme) ─────────── */
   --color-brand-50:  var(--selection);
@@ -266,6 +286,299 @@ body { margin: 0; }
 
 @layer base {
   * { @apply border-border outline-ring/50; }
-  body { @apply bg-background text-foreground; }
+  body { @apply text-foreground; }
   html { @apply font-sans; }
+}
+
+/* ── Comprehensive readability system ───────────────────────────────────────
+   Uses direct color enforcement on glass containers.
+   Light mode rules: ensure dark text over translucent light backgrounds.
+   Dark mode rules:  use !important to guarantee light text overrides any
+                     Tailwind utility that tries to apply a dark text color.  */
+
+/* ── LIGHT MODE: force dark text ─────────────────────────────── */
+.glass-sidebar,
+.glass-header,
+.glass-identity,
+.glass-toolbar,
+.glass-breadcrumb,
+.glass-search-indicator {
+  color: #242724;
+}
+.glass-table {
+  color: #242724;
+}
+.glass-table td { color: #383D38; }
+.glass-table thead th {
+  color: #3a3f3c;
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+.glass-card {
+  color: #242724;
+}
+
+/* ── DARK MODE: force light text — !important overrides Tailwind utilities ─ */
+.dark .glass-sidebar *,
+.dark .glass-header *,
+.dark .glass-identity *,
+.dark .glass-toolbar *,
+.dark .glass-breadcrumb *,
+.dark .glass-search-indicator * {
+  color: inherit;
+}
+.dark .glass-sidebar,
+.dark .glass-header,
+.dark .glass-identity,
+.dark .glass-toolbar,
+.dark .glass-breadcrumb,
+.dark .glass-search-indicator {
+  color: #E6EBE7 !important;
+}
+
+/* Dark table: all text near-white */
+.dark .glass-table {
+  color: #E6EBE7 !important;
+}
+.dark .glass-table td,
+.dark .glass-table td * {
+  color: #D4DDD8 !important;
+}
+/* File/folder name spans get brighter text */
+.dark .glass-table td span,
+.dark .glass-table td .flex span {
+  color: #E8EDEA !important;
+}
+.dark .glass-table thead th {
+  color: rgba(255, 255, 255, 0.70) !important;
+}
+/* Status bar below table */
+.dark .glass-table ~ div {
+  color: #98A29C !important;
+}
+
+/* Dark card text */
+.dark .glass-card,
+.dark .glass-card * {
+  color: #E6EBE7;
+}
+/* But don't override icon fill/stroke colors via color */
+.dark .glass-card svg { color: inherit; }
+
+/* Search bar input in dark mode */
+.dark input[type="search"],
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"] {
+  color: #E6EBE7 !important;
+}
+.dark input::placeholder {
+  color: #727D78 !important;
+  opacity: 1;
+}
+
+/* ── Auth page card (Login / Register) ──────────────────────────────────────
+   Sits directly over the background image. Needs stronger opacity.          */
+.glass-card.shadow-lg {
+  background: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: #242724 !important;
+}
+.glass-card.shadow-lg * {
+  color: inherit;
+}
+.dark .glass-card.shadow-lg {
+  background: rgba(16, 22, 19, 0.90) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: #E6EBE7 !important;
+}
+.dark .glass-card.shadow-lg *:not(svg):not(path) {
+  color: #E6EBE7;
+}
+.dark .glass-card.shadow-lg input {
+  color: #E6EBE7 !important;
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,0.15) !important;
+}
+
+
+/* ============================================================
+   E7 — ENVIRONMENT TRANSPARENCY SYSTEM
+   ============================================================
+   Light mode:  warm off-white (#EEF0EC) base for all glass surfaces.
+                Sidebar 58% | Header 58% | Identity 55% | Toolbar 65%
+                Breadcrumb 55% | Table 85% | Cards 75% | Workspace 0%
+                Popovers/Menus ~94%
+   Dark mode:   (unchanged from previous pass)
+   ============================================================ */
+
+body { background: transparent !important; }
+#root { background: transparent; }
+
+/* ── Sidebar ── 58% warm off-white light / 45% dark ─────────── */
+.glass-sidebar {
+  background: rgba(233, 235, 229, 0.58);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid rgba(180, 185, 176, 0.35);
+}
+.dark .glass-sidebar {
+  background: rgba(13, 18, 16, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-right: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ── Top header bar ── 58% warm off-white light / 45% dark ──── */
+.glass-header {
+  background: rgba(235, 237, 232, 0.58);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(175, 181, 170, 0.35);
+}
+.dark .glass-header {
+  background: rgba(10, 14, 12, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ── Identity bar ── 55% warm off-white light / 40% dark ────── */
+.glass-identity {
+  background: rgba(230, 233, 227, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(175, 181, 170, 0.30);
+}
+.dark .glass-identity {
+  background: rgba(10, 14, 12, 0.40);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ── Toolbar ── 65% warm off-white light / 50% dark ─────────── */
+.glass-toolbar {
+  background: rgba(238, 240, 235, 0.65);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(180, 185, 176, 0.32);
+}
+.dark .glass-toolbar {
+  background: rgba(10, 14, 12, 0.50);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ── Breadcrumb bar ── 55% warm off-white light / 42% dark ──── */
+.glass-breadcrumb {
+  background: rgba(232, 235, 229, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(175, 181, 170, 0.28);
+}
+.dark .glass-breadcrumb {
+  background: rgba(10, 14, 12, 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Search-mode indicator strip ───────────────────────────── */
+.glass-search-indicator {
+  background: rgba(232, 235, 229, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(175, 181, 170, 0.28);
+}
+.dark .glass-search-indicator {
+  background: rgba(10, 14, 12, 0.40);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── File table ── 85% warm off-white light / 60% dark ──────── */
+.glass-table {
+  background: rgba(242, 243, 239, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(170, 177, 165, 0.40);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.dark .glass-table {
+  background: rgba(16, 22, 19, 0.60);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ── Grid / detail cards ── 75% warm off-white light / 50% dark  */
+.glass-card {
+  background: rgba(240, 241, 237, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(170, 177, 165, 0.35);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+.dark .glass-card {
+  background: rgba(16, 22, 19, 0.50);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+}
+
+/* ── Workspace canvas — fully transparent ────────────────────── */
+.glass-workspace { background: transparent; }
+.dark .glass-workspace { background: transparent; }
+
+/* ── Shadcn popover / dropdown / context-menu ── 90%+ ─────────
+   Menus and dialogs need high opacity for readability.          */
+:root {
+  --popover: rgba(244, 245, 241, 0.94);
+  --card:    rgba(240, 241, 237, 0.75);
+}
+.dark {
+  --popover: rgba(16, 22, 19, 0.94);
+  --card:    rgba(16, 22, 19, 0.50);
+}
+
+/* ── Custom Scrollbars ───────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Firefox Support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }

@@ -66,7 +66,7 @@ export function RenameDialog({ open, onOpenChange, item, currentFolderId }) {
             <Input
               id="rename-input"
               autoComplete="off"
-              className="text-surface-900 dark:text-surface-100"
+              className="text-foreground dark:text-white"
               {...register('displayName', {
                 required: 'Name is required.',
                 maxLength: { value: 255, message: 'Name must not exceed 255 characters.' },

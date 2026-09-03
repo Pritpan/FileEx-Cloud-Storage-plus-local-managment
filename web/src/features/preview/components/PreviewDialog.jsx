@@ -24,6 +24,19 @@ function ImagePreview({ url, name }) {
   );
 }
 
+function VideoPreview({ url }) {
+  return (
+    <div className="flex items-center justify-center w-full h-full bg-black rounded-md overflow-hidden">
+      <video
+        src={url}
+        controls
+        controlsList="nodownload"
+        className="max-w-full max-h-full object-contain rounded"
+      />
+    </div>
+  );
+}
+
 function PdfPreview({ url }) {
   return (
     <iframe
@@ -118,6 +131,7 @@ export function PreviewDialog({ open, onOpenChange, item, previewUrl, isLoading,
 
     switch (previewType) {
       case 'image': return <ImagePreview url={previewUrl} name={item.displayName} />;
+      case 'video': return <VideoPreview url={previewUrl} />;
       case 'pdf':   return <PdfPreview url={previewUrl} />;
       case 'text':  return <TextPreview url={previewUrl} />;
       default:      return <UnsupportedPreview item={item} onDownload={downloadFile} />;

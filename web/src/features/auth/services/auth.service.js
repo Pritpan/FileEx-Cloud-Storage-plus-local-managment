@@ -14,7 +14,7 @@ export const authService = {
   
   register: async (credentials) => {
     const { data } = await api.post(AUTH.REGISTER, credentials);
-    return data.data; // { user, accessToken }
+    return data; // { success, message, data: { user } }
   },
   
   logout: async () => {
@@ -26,5 +26,16 @@ export const authService = {
     // The browser automatically sends the HttpOnly refresh token cookie
     const { data } = await api.post(AUTH.REFRESH);
     return data.data; // { user, accessToken }
-  }
+  },
+
+  verifyEmail: async (token) => {
+    const { data } = await api.get(AUTH.VERIFY_EMAIL, { params: { token } });
+    return data; // { success, message }
+  },
+
+  resendVerification: async (email) => {
+    const { data } = await api.post(AUTH.RESEND_VERIFICATION, { email });
+    return data; // { success, message }
+  },
 };
+

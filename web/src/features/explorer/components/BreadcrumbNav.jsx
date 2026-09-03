@@ -9,7 +9,7 @@ import {
 
 export function BreadcrumbNav({ items, onNavigate }) {
   return (
-    <div className="px-5 py-2 border-b border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900 shrink-0">
+    <div className="glass-breadcrumb px-5 py-2 shrink-0">
       <Breadcrumb>
         <BreadcrumbList>
           {items.map((item, index) => {

@@ -18,14 +18,14 @@ import { DeleteForeverDialog } from '../components/DeleteForeverDialog';
 function TrashEmptyState() {
   return (
     <div className="flex flex-col items-center justify-center flex-1 gap-4 text-center py-24">
-      <div className="p-6 rounded-full bg-surface-100 dark:bg-surface-800">
-        <Trash2 className="w-12 h-12 text-surface-300 dark:text-surface-600" />
+      <div className="p-6 rounded-full glass-card shadow-none">
+        <Trash2 className="w-12 h-12 text-foreground/40 dark:text-white/40" />
       </div>
       <div>
-        <p className="text-base font-semibold text-surface-800 dark:text-surface-200">
+        <p className="text-base font-semibold text-foreground/80 dark:text-white/80">
           Trash is empty
         </p>
-        <p className="text-sm text-surface-500 mt-1">
+        <p className="text-sm text-foreground/60 dark:text-white/60 mt-1">
           Files you delete will appear here.
         </p>
       </div>
@@ -38,7 +38,7 @@ function TrashSkeleton() {
   return (
     <div className="px-6 py-4 space-y-3">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="h-12 rounded-md bg-surface-100 dark:bg-surface-800 animate-pulse" />
+        <div key={i} className="h-12 rounded-md bg-black/5 dark:bg-white/10 animate-pulse" />
       ))}
     </div>
   );
@@ -48,7 +48,7 @@ function TrashSkeleton() {
 function TrashErrorState({ onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center flex-1 gap-3 py-24">
-      <p className="text-sm text-surface-500">Failed to load trash.</p>
+      <p className="text-sm text-foreground/60 dark:text-white/60">Failed to load trash.</p>
       <Button variant="outline" size="sm" onClick={onRetry}>Try again</Button>
     </div>
   );
@@ -65,17 +65,17 @@ export function TrashPage() {
   const closeDeleteDialog = () => setDeleteDialog({ open: false, item: null });
 
   return (
-    <div className="flex flex-col h-full w-full bg-surface-50 dark:bg-surface-950">
+    <div className="flex flex-col h-full w-full glass-workspace">
       {/* ── Page Header ── */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-surface-200 dark:border-surface-800 bg-surface-0 dark:bg-surface-950 shrink-0">
+      <div className="flex items-center justify-between px-6 py-4 glass-identity shrink-0">
         <div className="flex items-center gap-3">
-          <Trash2 className="w-5 h-5 text-surface-500" />
+          <Trash2 className="w-5 h-5 text-foreground/60 dark:text-white/60" />
           <div>
-            <h1 className="text-base font-semibold text-surface-900 dark:text-surface-100">
+            <h1 className="text-base font-semibold text-foreground dark:text-white">
               Trash
             </h1>
             {!isLoading && !isError && (
-              <p className="text-xs text-surface-500">
+              <p className="text-xs text-foreground/60 dark:text-white/60">
                 {items.length} item{items.length !== 1 ? 's' : ''}
               </p>
             )}
@@ -93,10 +93,10 @@ export function TrashPage() {
           <TrashEmptyState />
         ) : (
           <div className="px-6 py-4">
-            <div className="border border-surface-200 dark:border-surface-800 rounded-md bg-surface-0 dark:bg-surface-900 overflow-hidden">
+            <div className="glass-table rounded-md overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow className="hover:bg-transparent border-surface-200 dark:border-surface-800">
+                  <TableRow className="hover:bg-transparent border-black/10 dark:border-white/10">
                     <TableHead className="w-[40%]">Name</TableHead>
                     <TableHead>
                       <span className="flex items-center gap-1.5">
@@ -120,25 +120,25 @@ export function TrashPage() {
                   {items.map((item) => (
                     <TableRow
                       key={item.id}
-                      className="border-surface-200 dark:border-surface-800 hover:bg-surface-50 dark:hover:bg-surface-800/50 transition-colors group"
+                      className="border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition-colors group"
                     >
                       {/* Name */}
                       <TableCell>
                         <div className="flex items-center gap-3">
                           {getItemIcon(item, 'w-5 h-5')}
-                          <span className="truncate max-w-[200px] text-sm font-medium text-surface-800 dark:text-surface-200">
+                          <span className="truncate max-w-[200px] text-sm font-medium text-foreground dark:text-white">
                             {item.displayName}
                           </span>
                         </div>
                       </TableCell>
 
                       {/* Deleted date */}
-                      <TableCell className="text-sm text-surface-500 dark:text-surface-400">
+                      <TableCell className="text-sm text-foreground/70 dark:text-white/70">
                         {item.deletedAt ? formatDate(item.deletedAt) : '—'}
                       </TableCell>
 
                       {/* Size */}
-                      <TableCell className="text-sm text-surface-500 dark:text-surface-400">
+                      <TableCell className="text-sm text-foreground/70 dark:text-white/70">
                         {item.type === 'FOLDER' ? '—' : formatBytes(item.size)}
                       </TableCell>
 

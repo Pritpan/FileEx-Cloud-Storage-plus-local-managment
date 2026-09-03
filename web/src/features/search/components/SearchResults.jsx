@@ -23,6 +23,9 @@ export function SearchResults({
   onDelete,
   onPreview,
   onDownload,
+  sortBy,
+  sortDirection,
+  onSortChange,
 }) {
   if (isError) {
     return (
@@ -37,13 +40,15 @@ export function SearchResults({
 
   if (!results || results.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-20">
-        <SearchX className="w-10 h-10 text-surface-400 dark:text-surface-500" />
-        <div>
-          <p className="text-sm font-medium text-surface-600 dark:text-surface-100">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 h-full">
+        <div className="bg-white/60 dark:bg-black/60 backdrop-blur-md p-8 rounded-2xl shadow-xl flex flex-col items-center text-center max-w-sm border border-white/20 dark:border-white/10">
+          <div className="w-20 h-20 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
+            <SearchX className="w-10 h-10 text-surface-500 dark:text-surface-400" />
+          </div>
+          <h3 className="text-xl font-semibold text-foreground dark:text-white mb-2">
             No results for &ldquo;{query}&rdquo;
-          </p>
-          <p className="text-xs text-surface-400 mt-1">
+          </h3>
+          <p className="text-sm text-surface-600 dark:text-surface-400">
             Try a different name or check your spelling.
           </p>
         </div>
@@ -59,15 +64,18 @@ export function SearchResults({
     onDelete,
     onPreview,
     onDownload,
+    sortBy,
+    sortDirection,
+    onSortChange,
   };
 
   return (
     <div className="flex flex-col h-full">
       {/* Result count badge */}
       <div className="px-6 pt-4 pb-1">
-        <p className="text-xs text-surface-500 dark:text-surface-400">
+        <p className="text-xs opacity-60 text-foreground dark:text-white">
           {results.length} result{results.length !== 1 ? 's' : ''} for{' '}
-          <span className="font-medium text-surface-600 dark:text-surface-100">
+          <span className="font-medium opacity-90 text-foreground dark:text-white">
             &ldquo;{query}&rdquo;
           </span>
         </p>

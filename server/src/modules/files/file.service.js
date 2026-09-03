@@ -492,7 +492,7 @@ export const getDownloadUrl = async (id, userId) => {
 
   let result;
   try {
-    result = await storageService.generateDownloadUrl(file.storageKey);
+    result = await storageService.generateDownloadUrl(file.storageKey, file.displayName);
   } catch (err) {
     if (err instanceof StorageError) {
       throw createServiceError(
@@ -516,7 +516,7 @@ export const getPreviewUrl = async (id, userId) => {
 
   let result;
   try {
-    result = await storageService.generatePreviewUrl(file.storageKey);
+    result = await storageService.generatePreviewUrl(file.storageKey, file.mimeType, file.displayName);
   } catch (err) {
     if (err instanceof StorageError) {
       throw createServiceError(

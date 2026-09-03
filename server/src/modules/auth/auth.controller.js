@@ -1,5 +1,5 @@
 import * as authService from './auth.service.js';
-import { RegisterSchema, LoginSchema, UpdateProfileSchema } from './auth.schema.js';
+import { RegisterSchema, LoginSchema, UpdateProfileSchema, ResendVerificationSchema } from './auth.schema.js';
 
 const validate = (schema, body) => {
   const parsed = schema.safeParse(body);
@@ -57,9 +57,8 @@ export const register = async (req, res) => {
   if (!ok) return res.status(400).json(response);
 
   const result = await handleService(res, () => authService.register(data));
+  // Registration now returns 201 but no tokens — user must verify email first
   if (result) {
-    setRefreshCookie(res, result.data.refreshToken);
-    delete result.data.refreshToken;
     res.status(201).json(result);
   }
 };
@@ -126,3 +125,26 @@ export const updateMe = async (req, res) => {
 
   if (result) res.status(200).json(result);
 };
+
+export const verifyEmail = async (req, res) => {
+  const token = req.query?.token;
+
+  if (!token) {
+    return res.status(400).json({
+      success: false,
+      error: { code: 'MISSING_TOKEN', message: 'Verification token is required.' },
+    });
+  }
+
+  const result = await handleService(res, () => authService.verifyEmail(token));
+  if (result) res.status(200).json(result);
+};
+
+export const resendVerification = async (req, res) => {
+  const { ok, data, response } = validate(ResendVerificationSchema, req.body);
+  if (!ok) return res.status(400).json(response);
+
+  const result = await handleService(res, () => authService.resendVerification(data.email));
+  if (result) res.status(200).json(result);
+};
+

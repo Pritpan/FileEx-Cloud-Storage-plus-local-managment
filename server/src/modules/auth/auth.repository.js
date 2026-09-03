@@ -4,6 +4,7 @@ const SAFE_USER_SELECT = {
   id: true,
   name: true,
   email: true,
+  emailVerified: true,
   avatarUrl: true,
   createdAt: true,
   updatedAt: true,
@@ -22,6 +23,7 @@ const findUserByEmail = async (email, db = prisma) => {
       id: true,
       name: true,
       email: true,
+      emailVerified: true,
       hashedPassword: true,
       avatarUrl: true,
       createdAt: true,
@@ -88,6 +90,47 @@ const deleteAllRefreshTokens = async (userId, db = prisma) => {
   return db.refreshToken.deleteMany({ where: { userId } });
 };
 
+// ── Email Verification Token ─────────────────────────────────────────────────
+
+const saveEmailVerificationToken = async ({ userId, tokenHash, expiresAt }, db = prisma) => {
+  return db.emailVerificationToken.create({
+    data: { userId, tokenHash, expiresAt },
+    select: { id: true },
+  });
+};
+
+const findEmailVerificationToken = async (tokenHash, db = prisma) => {
+  return db.emailVerificationToken.findUnique({
+    where: { tokenHash },
+    select: {
+      id: true,
+      userId: true,
+      tokenHash: true,
+      expiresAt: true,
+      usedAt: true,
+    },
+  });
+};
+
+/**
+ * Mark a verification token as used (single-use enforcement).
+ */
+const markEmailVerificationTokenUsed = async (id, db = prisma) => {
+  return db.emailVerificationToken.update({
+    where: { id },
+    data: { usedAt: new Date() },
+  });
+};
+
+/**
+ * Delete all unused verification tokens for a user (used when resending).
+ */
+const deleteEmailVerificationTokensForUser = async (userId, db = prisma) => {
+  return db.emailVerificationToken.deleteMany({
+    where: { userId, usedAt: null },
+  });
+};
+
 const authRepository = {
   findUserByEmail,
   findUserById,
@@ -97,6 +140,11 @@ const authRepository = {
   findRefreshToken,
   deleteRefreshToken,
   deleteAllRefreshTokens,
+  // Email verification
+  saveEmailVerificationToken,
+  findEmailVerificationToken,
+  markEmailVerificationTokenUsed,
+  deleteEmailVerificationTokensForUser,
 };
 
 export default authRepository;

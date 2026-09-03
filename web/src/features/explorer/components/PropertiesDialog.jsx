@@ -38,7 +38,7 @@ export function PropertiesDialog({ open, onOpenChange, item }) {
               <div className="flex items-center gap-4 pb-4 border-b border-surface-200 dark:border-surface-800">
                 {getItemIcon(displayData, 'w-12 h-12')}
                 <div>
-                  <h4 className="font-medium text-surface-900 dark:text-surface-100 break-all">{displayData.displayName}</h4>
+                  <h4 className="font-medium text-foreground dark:text-white break-all">{displayData.displayName}</h4>
                   <p className="text-sm text-surface-500">
                     {isFile ? 'File' : 'File Folder'}
                   </p>
@@ -47,33 +47,33 @@ export function PropertiesDialog({ open, onOpenChange, item }) {
 
               <dl className="grid grid-cols-[110px_1fr] gap-y-3 text-sm">
                 <dt className="text-surface-500 font-medium">Type:</dt>
-                <dd className="text-surface-900 dark:text-surface-100 truncate">
+                <dd className="text-foreground dark:text-white truncate">
                   {isFile ? (displayData.mimeType || 'Unknown') : 'Folder'}
                 </dd>
 
                 {isFile && (
                   <>
                     <dt className="text-surface-500 font-medium">Size:</dt>
-                    <dd className="text-surface-900 dark:text-surface-100">
+                    <dd className="text-foreground dark:text-white">
                       {formatBytes(displayData.size, 2)} ({displayData.size} bytes)
                     </dd>
                   </>
                 )}
 
                 <dt className="text-surface-500 font-medium">Created:</dt>
-                <dd className="text-surface-900 dark:text-surface-100">
+                <dd className="text-foreground dark:text-white">
                   {displayData.createdAt ? formatDate(displayData.createdAt) : '--'}
                 </dd>
 
                 <dt className="text-surface-500 font-medium">Modified:</dt>
-                <dd className="text-surface-900 dark:text-surface-100">
+                <dd className="text-foreground dark:text-white">
                   {displayData.updatedAt ? formatDate(displayData.updatedAt) : '--'}
                 </dd>
 
                 {isFile && (
                   <>
                     <dt className="text-surface-500 font-medium">Status:</dt>
-                    <dd className="text-surface-900 dark:text-surface-100">
+                    <dd className="text-foreground dark:text-white">
                       {displayData.status || 'READY'}
                     </dd>
                   </>
@@ -82,7 +82,7 @@ export function PropertiesDialog({ open, onOpenChange, item }) {
                 {!isFile && properties && (
                   <>
                     <dt className="text-surface-500 font-medium">Contains:</dt>
-                    <dd className="text-surface-900 dark:text-surface-100">
+                    <dd className="text-foreground dark:text-white">
                       {properties.filesCount} Files, {properties.foldersCount} Folders
                     </dd>
                   </>

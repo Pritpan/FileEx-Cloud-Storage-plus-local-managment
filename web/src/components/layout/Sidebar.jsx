@@ -15,8 +15,8 @@ export function Sidebar() {
   return (
     <aside
       className={`
-        flex-shrink-0 flex flex-col border-r border-surface-300
-        bg-sidebar dark:bg-sidebar dark:border-surface-700
+        glass-sidebar
+        flex-shrink-0 flex flex-col
         h-screen hidden md:flex overflow-hidden
         transition-all duration-200 ease-in-out
         ${collapsed ? 'w-14' : 'w-56'}
@@ -24,13 +24,13 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div
-        className="h-12 flex items-center border-b border-surface-300 dark:border-surface-700 shrink-0 px-3 cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800/50 transition-colors"
+        className="h-12 flex items-center border-b border-black/10 dark:border-white/10 shrink-0 px-3 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
         onClick={toggleSidebar}
       >
         <div className={`flex items-center gap-2 min-w-0 ${collapsed ? 'justify-center w-full' : ''}`}>
           <Layers className="w-5 h-5 text-brand-600 dark:text-brand-400 shrink-0" />
           {!collapsed && (
-            <span className="font-semibold text-base text-surface-600 dark:text-surface-100 tracking-tight truncate">
+            <span className="font-semibold text-base text-foreground dark:text-white tracking-tight truncate">
               Fileex
             </span>
           )}
@@ -43,7 +43,7 @@ export function Sidebar() {
         {/* WORKSPACE section */}
         {!collapsed && (
           <div className="pb-1 px-2">
-            <p className="text-[10px] font-semibold text-surface-400 dark:text-surface-500 uppercase tracking-widest">
+            <p className="text-[10px] font-bold text-foreground/70 dark:text-white/70 uppercase tracking-widest">
               Workspace
             </p>
           </div>
@@ -60,7 +60,7 @@ export function Sidebar() {
         {/* MY CLOUD section */}
         {!collapsed && (
           <div className="pt-4 pb-1 px-2">
-            <p className="text-[10px] font-semibold text-surface-400 dark:text-surface-500 uppercase tracking-widest">
+            <p className="text-[10px] font-bold text-foreground/70 dark:text-white/70 uppercase tracking-widest">
               Cloud
             </p>
           </div>
@@ -73,7 +73,7 @@ export function Sidebar() {
         {/* SYSTEM section */}
         {!collapsed && (
           <div className="pt-4 pb-1 px-2">
-            <p className="text-[10px] font-semibold text-surface-400 dark:text-surface-500 uppercase tracking-widest">
+            <p className="text-[10px] font-bold text-foreground/70 dark:text-white/70 uppercase tracking-widest">
               System
             </p>
           </div>

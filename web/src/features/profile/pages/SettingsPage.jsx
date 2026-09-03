@@ -61,14 +61,14 @@ export function SettingsPage() {
   const isDark = theme === 'dark';
 
   return (
-    <div className="flex flex-col h-full w-full bg-surface-50 dark:bg-surface-950 overflow-y-auto">
+    <div className="flex flex-col h-full w-full glass-workspace overflow-y-auto">
       {/* ── Page Header ── */}
-      <div className="px-8 py-8 border-b border-surface-200 dark:border-surface-800 bg-surface-0 dark:bg-surface-950 shrink-0">
-        <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 flex items-center gap-3">
+      <div className="px-8 py-8 glass-identity shrink-0">
+        <h1 className="text-2xl font-bold text-foreground dark:text-white flex items-center gap-3">
           <User className="w-7 h-7 text-brand-600 dark:text-brand-500" />
           Profile & Settings
         </h1>
-        <p className="text-surface-500 mt-2">
+        <p className="text-foreground/60 dark:text-white/60 mt-2">
           Manage your account and application preferences.
         </p>
       </div>
@@ -76,7 +76,7 @@ export function SettingsPage() {
       <div className="p-8 max-w-4xl mx-auto w-full space-y-8 pb-20">
 
         {/* ── Profile Card ── */}
-        <Card className="border-surface-200 dark:border-surface-800 shadow-sm overflow-hidden">
+        <Card className="glass-card shadow-sm border-none overflow-hidden">
           <div className="h-20 bg-brand-600 dark:bg-brand-700" />
           <CardContent className="px-8 pb-8 pt-0 relative">
             <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-12 md:-mt-16 mb-6">
@@ -87,10 +87,10 @@ export function SettingsPage() {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <h2 className="text-2xl font-bold text-surface-900 dark:text-surface-100 truncate">
+                <h2 className="text-2xl font-bold text-foreground dark:text-white truncate">
                   {profile?.name || 'Fileex User'}
                 </h2>
-                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mt-2 text-surface-500 text-sm font-medium">
+                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mt-2 text-foreground/60 dark:text-white/60 text-sm font-medium">
                   <span className="flex items-center gap-1.5 min-w-0">
                     <Mail className="w-4 h-4 shrink-0" />
                     <span className="truncate">{profile?.email || '—'}</span>
@@ -116,33 +116,33 @@ export function SettingsPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div>
-                <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-4 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-foreground dark:text-white mb-4 flex items-center gap-2">
                   <HardDrive className="w-4 h-4 text-brand-600" /> Storage Plan
                 </h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-surface-500">Current Plan</span>
+                    <span className="text-sm text-foreground/60 dark:text-white/60">Current Plan</span>
                     <Badge variant="secondary" className="bg-brand-100 text-brand-600 dark:bg-brand-900/40 dark:text-brand-400">Free Tier</Badge>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-surface-500">Storage Used</span>
-                    <span className="text-sm font-medium text-surface-900 dark:text-surface-100">
+                    <span className="text-sm text-foreground/60 dark:text-white/60">Storage Used</span>
+                    <span className="text-sm font-medium text-foreground dark:text-white">
                       {formatBytes(usedBytes)} / {formatBytes(totalBytes)} ({percentage.toFixed(1)}%)
                     </span>
                   </div>
                 </div>
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-surface-900 dark:text-surface-100 mb-4 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-foreground dark:text-white mb-4 flex items-center gap-2">
                   <Shield className="w-4 h-4 text-success" /> Security Status
                 </h3>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-surface-500">Password</span>
-                    <span className="text-sm font-medium text-surface-900 dark:text-surface-100">••••••••</span>
+                    <span className="text-sm text-foreground/60 dark:text-white/60">Password</span>
+                    <span className="text-sm font-medium text-foreground dark:text-white">••••••••</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-surface-500">Two-Factor Auth</span>
+                    <span className="text-sm text-foreground/60 dark:text-white/60">Two-Factor Auth</span>
                     <Badge variant="outline" className="text-surface-500 border-surface-200 dark:border-surface-700">Disabled</Badge>
                   </div>
                 </div>
@@ -153,10 +153,10 @@ export function SettingsPage() {
 
         {/* ── Settings Sections ── */}
         <div className="space-y-6">
-          <h2 className="text-lg font-bold text-surface-900 dark:text-surface-100">Application Settings</h2>
+          <h2 className="text-lg font-bold text-foreground dark:text-white">Application Settings</h2>
 
           {/* Appearance */}
-          <Card className="border-surface-200 dark:border-surface-800 shadow-sm">
+          <Card className="glass-card shadow-sm border-none">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Palette className="w-4 h-4 text-surface-500" /> Appearance
@@ -171,8 +171,8 @@ export function SettingsPage() {
                     : <Sun className="w-5 h-5 text-amber-500" />
                   }
                   <div>
-                    <p className="text-sm font-medium text-surface-900 dark:text-surface-100">Dark Mode</p>
-                    <p className="text-sm text-surface-500">
+                    <p className="text-sm font-medium text-foreground dark:text-white">Dark Mode</p>
+                    <p className="text-sm text-foreground/60 dark:text-white/60">
                       Currently using <span className="font-medium">{isDark ? 'dark' : 'light'}</span> theme.
                     </p>
                   </div>
@@ -186,7 +186,7 @@ export function SettingsPage() {
           </Card>
 
           {/* Notifications */}
-          <Card className="border-surface-200 dark:border-surface-800 shadow-sm">
+          <Card className="glass-card shadow-sm border-none">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Bell className="w-4 h-4 text-surface-500" /> Notifications
@@ -200,8 +200,8 @@ export function SettingsPage() {
               ].map(({ label, desc }) => (
                 <div key={label} className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-surface-900 dark:text-surface-100">{label}</p>
-                    <p className="text-sm text-surface-500">{desc}</p>
+                    <p className="text-sm font-medium text-foreground dark:text-white">{label}</p>
+                    <p className="text-sm text-foreground/60 dark:text-white/60">{desc}</p>
                   </div>
                   <Switch disabled checked />
                 </div>
@@ -210,7 +210,7 @@ export function SettingsPage() {
           </Card>
 
           {/* About */}
-          <Card className="border-surface-200 dark:border-surface-800 shadow-sm">
+          <Card className="glass-card shadow-sm border-none">
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
                 <Info className="w-4 h-4 text-surface-500" /> About
@@ -222,15 +222,15 @@ export function SettingsPage() {
                 ['Version', 'v1.0.0-beta'],
               ].map(([key, val]) => (
                 <div key={key} className="flex items-center justify-between">
-                  <span className="text-sm text-surface-500">{key}</span>
-                  <span className="text-sm font-medium text-surface-900 dark:text-surface-100">{val}</span>
+                  <span className="text-sm text-foreground/60 dark:text-white/60">{key}</span>
+                  <span className="text-sm font-medium text-foreground dark:text-white">{val}</span>
                 </div>
               ))}
             </CardContent>
           </Card>
 
           {/* Danger Zone */}
-          <Card className="border-red-200 dark:border-red-900/30 shadow-sm">
+          <Card className="glass-card shadow-sm border-red-500/20">
             <CardHeader>
               <CardTitle className="text-base text-red-600 dark:text-red-400">Danger Zone</CardTitle>
               <CardDescription>Irreversible and destructive actions.</CardDescription>
@@ -238,8 +238,8 @@ export function SettingsPage() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-surface-900 dark:text-surface-100">Log out</p>
-                  <p className="text-sm text-surface-500">Sign out from your current session.</p>
+                  <p className="text-sm font-medium text-foreground dark:text-white">Log out</p>
+                  <p className="text-sm text-foreground/60 dark:text-white/60">Sign out from your current session.</p>
                 </div>
                 <Button
                   variant="outline"

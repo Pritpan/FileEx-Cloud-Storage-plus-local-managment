@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useUpload } from '../hooks/useUpload';
 import { useTransfers } from '../hooks/useTransfers';
@@ -8,6 +8,7 @@ export function UploadDropzone({ children, currentFolderId }) {
   const { uploadFiles } = useUpload();
   const { uploadLocalToCloud } = useTransfers();
   const [isHtml5DragOver, setIsHtml5DragOver] = useState(false);
+  const dragCounter = useRef(0);
 
   const onDrop = useCallback(
     (acceptedFiles) => {
@@ -28,14 +29,24 @@ export function UploadDropzone({ children, currentFolderId }) {
     <div
       {...getRootProps()}
       className="relative flex-1 flex flex-col h-full w-full outline-none"
+      onDragEnter={(e) => {
+        e.preventDefault();
+        dragCounter.current += 1;
+        setIsHtml5DragOver(true);
+      }}
       onDragOver={(e) => {
         // Dropzone's getRootProps overrides this if it's native files,
         // but for synthetic drag, we catch it here.
         e.preventDefault();
-        setIsHtml5DragOver(true);
       }}
-      onDragLeave={() => setIsHtml5DragOver(false)}
+      onDragLeave={(e) => {
+        dragCounter.current -= 1;
+        if (dragCounter.current === 0) {
+          setIsHtml5DragOver(false);
+        }
+      }}
       onDrop={(e) => {
+        dragCounter.current = 0;
         setIsHtml5DragOver(false);
         const dataStr = e.dataTransfer.getData('application/json');
         if (dataStr) {
@@ -57,12 +68,11 @@ export function UploadDropzone({ children, currentFolderId }) {
 
       {/* Drag Overlay */}
       {(isDragActive || isHtml5DragOver) && (
-        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-brand-50/95 dark:bg-brand-950/90 backdrop-blur-sm border-2 border-dashed border-brand-600 m-2 rounded-md">
-          <div className="bg-surface-0 dark:bg-surface-800 p-6 rounded-full shadow-sm mb-4">
-            <UploadCloud className="w-12 h-12 text-brand-600" />
+        <div className="absolute inset-0 z-50 pointer-events-none border-2 border-dashed border-[#5D82A6] m-2 rounded-lg bg-[#5D82A6]/5 dark:bg-[#5D82A6]/10 transition-all duration-200">
+          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-[#5D82A6] text-white px-6 py-3 rounded-full shadow-lg animate-in slide-in-from-bottom-4 fade-in duration-200">
+            <UploadCloud className="w-5 h-5" />
+            <span className="font-medium text-sm">Drop to upload to current folder</span>
           </div>
-          <h3 className="text-xl font-semibold text-brand-600 dark:text-brand-400">Drop files here to upload</h3>
-          <p className="text-brand-600/70 dark:text-brand-400/70 mt-1 text-sm">Files will be uploaded to the current folder</p>
         </div>
       )}
     </div>

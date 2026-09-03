@@ -341,10 +341,20 @@ ipcMain.handle('filesystem:search', (_event, dirPath, query) =>
 ipcMain.handle('transfer:upload-local-file', async (event, { transferId, localPath, presignedUrl, mimeType, fileSize }) => {
   const sender = event.sender;
 
-  const sendProgress = (bytesTransferred, total) => {
+  let lastSentTime = 0;
+  let lastSentPercent = -1;
+
+  const sendProgress = (bytesTransferred, total, force = false) => {
     const percent = total > 0 ? Math.round((bytesTransferred / total) * 100) : 0;
-    if (!sender.isDestroyed()) {
-      sender.send('transfer:progress', { transferId, percent, bytesTransferred, totalBytes: total });
+    const now = Date.now();
+    
+    // Throttle IPC events to max 10/sec, or if percent changed significantly, or if forced (100%)
+    if (force || now - lastSentTime > 100 || percent >= lastSentPercent + 5) {
+      lastSentTime = now;
+      lastSentPercent = percent;
+      if (!sender.isDestroyed()) {
+        sender.send('transfer:progress', { transferId, percent, bytesTransferred, totalBytes: total });
+      }
     }
   };
 
@@ -380,7 +390,7 @@ ipcMain.handle('transfer:upload-local-file', async (event, { transferId, localPa
       res.resume();
       res.on('end', () => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          sendProgress(totalBytes, totalBytes);
+          sendProgress(totalBytes, totalBytes, true);
           resolve({ success: true });
         } else {
           resolve({ success: false, error: { code: 'S3_ERROR', message: `S3 responded with ${res.statusCode}` } });
@@ -424,10 +434,19 @@ ipcMain.handle('transfer:upload-local-file', async (event, { transferId, localPa
 ipcMain.handle('transfer:download-to-local', async (event, { transferId, presignedUrl, destinationPath }) => {
   const sender = event.sender;
 
-  const sendProgress = (bytesTransferred, total) => {
+  let lastSentTime = 0;
+  let lastSentPercent = -1;
+
+  const sendProgress = (bytesTransferred, total, force = false) => {
     const percent = total > 0 ? Math.round((bytesTransferred / total) * 100) : 0;
-    if (!sender.isDestroyed()) {
-      sender.send('transfer:progress', { transferId, percent, bytesTransferred, totalBytes: total });
+    const now = Date.now();
+    
+    if (force || now - lastSentTime > 100 || percent >= lastSentPercent + 5) {
+      lastSentTime = now;
+      lastSentPercent = percent;
+      if (!sender.isDestroyed()) {
+        sender.send('transfer:progress', { transferId, percent, bytesTransferred, totalBytes: total });
+      }
     }
   };
 
@@ -462,7 +481,7 @@ ipcMain.handle('transfer:download-to-local', async (event, { transferId, presign
       res.pipe(writeStream);
 
       writeStream.on('finish', () => {
-        sendProgress(totalBytes, totalBytes);
+        sendProgress(totalBytes, totalBytes, true);
         resolve({ success: true });
       });
 
@@ -513,6 +532,9 @@ function createWindow() {
       // Security: preload runs in its own JS context, completely isolated from
       // the renderer's window object. Only what contextBridge exposes is shared.
       contextIsolation: true,
+
+      // Enables the built-in Chrome PDF viewer so PDFs don't automatically download
+      plugins: true,
 
       // Disable the ability to open devtools via keyboard shortcuts in production.
       devTools: isDev,

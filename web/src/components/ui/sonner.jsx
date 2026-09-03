@@ -1,11 +1,11 @@
-import { useTheme } from "next-themes"
+import { useThemeStore } from "@/store"
 import { Toaster as Sonner } from "sonner";
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
 const Toaster = ({
   ...props
 }) => {
-  const { theme = "system" } = useTheme()
+  const theme = useThemeStore((s) => s.theme);
 
   return (
     <Sonner
@@ -38,7 +38,13 @@ const Toaster = ({
       }
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
+          toast:
+            "toast bg-background text-foreground dark:text-white border-border shadow-lg",
+          description: "text-muted-foreground",
+          actionButton:
+            "bg-primary text-primary-foreground",
+          cancelButton:
+            "bg-muted text-muted-foreground",
         },
       }}
       {...props} />

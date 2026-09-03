@@ -25,16 +25,16 @@ export function UploadItem({ upload, onRemove }) {
   const indicatorColor = isDownload ? 'bg-earth-600' : 'bg-sky-600';
 
   return (
-    <div className="flex flex-col gap-2 p-3 bg-surface-0 dark:bg-surface-900 border-b border-surface-200 dark:border-surface-800 last:border-0 relative group">
+    <div className="flex flex-col gap-2 p-3 bg-card border-b border-border last:border-0 relative group">
       <div className="flex items-center gap-3">
-        <File className="w-8 h-8 text-surface-400 shrink-0" />
+        <File className="w-8 h-8 opacity-50 text-foreground shrink-0" />
         
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-surface-900 dark:text-surface-100 truncate" title={displayName}>
+          <p className="text-sm font-medium text-foreground truncate" title={displayName}>
             {displayName}
           </p>
           
-          <div className="flex justify-between items-center mt-1 text-xs text-surface-500">
+          <div className="flex justify-between items-center mt-1 text-xs opacity-70 text-foreground">
             <span>{formatBytes(displaySize)}</span>
             <span className={status === 'FAILED' ? 'text-red-500 font-medium' : status === 'COMPLETED' ? 'text-green-500 font-medium' : ''}>
               {status === 'FAILED' ? error || 'Error' : statusText[status]}
@@ -51,7 +51,7 @@ export function UploadItem({ upload, onRemove }) {
           <button 
             type="button"
             onClick={() => onRemove(upload.id)}
-            className="opacity-0 group-hover:opacity-100 p-1 text-surface-400 hover:text-surface-700 dark:hover:text-surface-300 transition-opacity"
+            className="opacity-0 group-hover:opacity-50 hover:!opacity-100 p-1 text-foreground transition-opacity"
             title="Remove"
           >
             <X className="w-4 h-4" />

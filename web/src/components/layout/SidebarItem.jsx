@@ -63,11 +63,11 @@ export function SidebarItem({ icon: Icon, label, to, disabled, collapsed }) {
       }}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors',
+          'flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors font-medium',
           collapsed && 'justify-center px-2',
           isActive
-            ? 'bg-brand-50 text-brand-600 dark:bg-brand-900/60 dark:text-brand-400'
-            : 'text-surface-600 hover:bg-surface-100 hover:text-surface-600 dark:text-surface-400 dark:hover:bg-surface-700 dark:hover:text-surface-100',
+            ? 'bg-brand-100/80 text-brand-700 dark:bg-brand-900/80 dark:text-brand-300 font-semibold shadow-sm'
+            : 'text-foreground/90 hover:bg-black/10 hover:text-foreground dark:text-white/80 dark:hover:bg-white/10 dark:hover:text-white',
         )
       }
     >

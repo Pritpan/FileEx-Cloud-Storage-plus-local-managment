@@ -12,8 +12,30 @@ import {
   UploadFailedError,
   StorageUnavailableError,
 } from './storage.errors.js';
+import path from 'path';
 
 const BUCKET = process.env.AWS_BUCKET_NAME;
+
+const getMimeFromExtension = (fileName) => {
+  if (!fileName) return 'application/octet-stream';
+  const ext = path.extname(fileName).toLowerCase();
+  switch (ext) {
+    case '.pdf': return 'application/pdf';
+    case '.png': return 'image/png';
+    case '.jpg':
+    case '.jpeg': return 'image/jpeg';
+    case '.gif': return 'image/gif';
+    case '.webp': return 'image/webp';
+    case '.txt': return 'text/plain';
+    case '.csv': return 'text/csv';
+    case '.html': return 'text/html';
+    case '.mp4': return 'video/mp4';
+    case '.webm': return 'video/webm';
+    case '.mp3': return 'audio/mpeg';
+    case '.wav': return 'audio/wav';
+    default: return 'application/octet-stream';
+  }
+};
 
 const generateUploadUrl = async (storageKey, mimeType) => {
   try {
@@ -36,12 +58,20 @@ const generateUploadUrl = async (storageKey, mimeType) => {
   }
 };
 
-const generateDownloadUrl = async (storageKey) => {
+const generateDownloadUrl = async (storageKey, fileName) => {
   try {
-    const command = new GetObjectCommand({
+    const commandParams = {
       Bucket: BUCKET,
       Key: storageKey,
-    });
+    };
+
+    if (fileName) {
+      // Encode filename to handle special characters properly in headers
+      const encodedName = encodeURIComponent(fileName);
+      commandParams.ResponseContentDisposition = `attachment; filename="${encodedName}"; filename*=UTF-8''${encodedName}`;
+    }
+
+    const command = new GetObjectCommand(commandParams);
 
     const downloadUrl = await getSignedUrl(s3Client, command, {
       expiresIn: PRESIGNED_URL_EXPIRATION_SECONDS,
@@ -56,12 +86,32 @@ const generateDownloadUrl = async (storageKey) => {
   }
 };
 
-const generatePreviewUrl = async (storageKey) => {
+const generatePreviewUrl = async (storageKey, mimeType, fileName) => {
   try {
-    const { downloadUrl, expiresIn } = await generateDownloadUrl(storageKey);
-    return { previewUrl: downloadUrl, expiresIn };
+    const commandParams = {
+      Bucket: BUCKET,
+      Key: storageKey,
+      ResponseContentDisposition: 'inline',
+    };
+
+    let finalMimeType = mimeType;
+    if (!finalMimeType || finalMimeType === 'application/octet-stream') {
+      finalMimeType = getMimeFromExtension(fileName);
+    }
+
+    if (finalMimeType && finalMimeType !== 'application/octet-stream') {
+      commandParams.ResponseContentType = finalMimeType;
+    }
+
+    const command = new GetObjectCommand(commandParams);
+
+    const previewUrl = await getSignedUrl(s3Client, command, {
+      expiresIn: PRESIGNED_URL_EXPIRATION_SECONDS,
+    });
+
+    return { previewUrl, expiresIn: PRESIGNED_URL_EXPIRATION_SECONDS };
   } catch (err) {
-    throw err;
+    throw new StorageUnavailableError('Failed to generate preview URL.');
   }
 };
 

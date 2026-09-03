@@ -20,7 +20,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Monitor, FolderPlus, LayoutGrid, List, RefreshCw, ClipboardPaste, UploadCloud, FileText } from 'lucide-react';
+import { Monitor, FolderPlus, LayoutGrid, List, RefreshCw, ClipboardPaste, UploadCloud, FileText, Folder, HardDrive, File } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   ContextMenu, ContextMenuContent, ContextMenuItem,
@@ -30,15 +30,18 @@ import { toast } from 'sonner';
 import { BreadcrumbNav } from '@/features/explorer/components/BreadcrumbNav';
 import { LoadingSkeleton } from '@/features/explorer/components/LoadingSkeleton';
 import { ErrorState } from '@/features/explorer/components/ErrorState';
+import { useSort } from '@/features/explorer/hooks/useSort';
+import { SortDropdown } from '@/features/explorer/components/SortDropdown';
+import { sortFiles } from '@/utils/sortUtils';
 import { UploadQueue } from '@/features/upload/components/UploadQueue';
 import { useTransfers } from '@/features/upload/hooks/useTransfers';
 import { SearchBar } from '@/features/search/components/SearchBar';
 import { useDebounce } from '@/hooks/useDebounce';
-import { EnvironmentBanner } from '@/components/environment/EnvironmentBanner';
 import { useLocalDirectory } from '../hooks/useLocalDirectory';
 import { useLocalClipboard } from '../hooks/useLocalClipboard';
 import { useLocalSearch } from '../hooks/useLocalSearch';
 import { mimeFromPath } from '../utils/mimeFromPath';
+import { formatBytes } from '@/features/explorer/components/ExplorerItem';
 import { DriveList } from '../components/DriveList';
 import { LocalExplorerGrid } from '../components/LocalExplorerGrid';
 import { LocalExplorerTable } from '../components/LocalExplorerTable';
@@ -65,16 +68,20 @@ function NotElectronGuard() {
 function LocalEmptyState({ onNewFolder }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center h-full">
-      <div className="w-20 h-20 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mb-6">
-        <FolderPlus className="w-10 h-10 text-surface-400 dark:text-surface-500" />
+      <div className="bg-white/60 dark:bg-black/60 backdrop-blur-md p-8 rounded-2xl shadow-xl flex flex-col items-center text-center max-w-sm border border-white/20 dark:border-white/10">
+        <div className="w-20 h-20 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
+          <FolderPlus className="w-10 h-10 text-surface-400 dark:text-surface-500" />
+        </div>
+        <h3 className="text-xl font-semibold text-foreground dark:text-white mb-2">
+          This folder is empty
+        </h3>
+        <p className="text-sm text-surface-600 dark:text-surface-400 max-w-sm mb-6">
+          Create a new folder or upload files here.
+        </p>
+        <Button variant="outline" onClick={onNewFolder} className="text-surface-900 dark:text-white dark:hover:text-white dark:border-white/20 dark:hover:bg-white/10">
+          New Folder
+        </Button>
       </div>
-      <h3 className="text-lg font-medium text-surface-600 dark:text-surface-100 mb-2">
-        This folder is empty
-      </h3>
-      <p className="text-sm text-surface-500 dark:text-surface-400 max-w-sm mb-6">
-        Create a new folder or upload files here.
-      </p>
-      <Button variant="outline" onClick={onNewFolder}>New Folder</Button>
     </div>
   );
 }
@@ -82,16 +89,18 @@ function LocalEmptyState({ onNewFolder }) {
 // ── Search empty state ─────────────────────────────────────────────────────
 function LocalSearchEmptyState({ query }) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center h-full">
-      <div className="w-20 h-20 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mb-6">
-        <FileText className="w-10 h-10 text-surface-400 dark:text-surface-500" />
+    <div className="flex-1 flex flex-col items-center justify-center p-8 h-full">
+      <div className="bg-white/60 dark:bg-black/60 backdrop-blur-md p-8 rounded-2xl shadow-xl flex flex-col items-center text-center max-w-sm border border-white/20 dark:border-white/10">
+        <div className="w-20 h-20 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
+          <FileText className="w-10 h-10 text-surface-500 dark:text-surface-400" />
+        </div>
+        <h3 className="text-xl font-semibold text-foreground dark:text-white mb-2">
+          No results for "{query}"
+        </h3>
+        <p className="text-sm text-surface-600 dark:text-surface-400">
+          Try a different search term or navigate to a different folder.
+        </p>
       </div>
-      <h3 className="text-lg font-medium text-surface-600 dark:text-surface-100 mb-2">
-        No results for "{query}"
-      </h3>
-      <p className="text-sm text-surface-500 dark:text-surface-400 max-w-sm">
-        Try a different search term or navigate to a different folder.
-      </p>
     </div>
   );
 }
@@ -106,7 +115,16 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
   // Guard — all hooks run unconditionally; return early from render if not Electron
   const isElectron = Boolean(window.electronAPI);
 
-  const [viewMode, setViewMode] = useState('grid');
+  const [viewMode, setViewModeState] = useState(() => {
+    return localStorage.getItem('fileex-local-view-mode') || 'grid';
+  });
+
+  const setViewMode = (mode) => {
+    setViewModeState(mode);
+    localStorage.setItem('fileex-local-view-mode', mode);
+  };
+
+  const { sortBy, direction, setSort } = useSort();
 
   // ── Selection ──────────────────────────────────────────────────────────────
   const [selectedItem, setSelectedItem] = useState(null);
@@ -272,20 +290,25 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
       if (isSearchLoading) return <LoadingSkeleton viewMode={viewMode} />;
       if (isSearchError)   return <ErrorState message="Search failed. Try again." onRetry={() => {}} />;
       if (searchResults.length === 0) return <LocalSearchEmptyState query={debouncedQuery} />;
+      
+      const sortedSearch = sortFiles(searchResults, sortBy, direction);
       return viewMode === 'grid'
-        ? <LocalExplorerGrid  items={searchResults} {...itemActionProps} />
-        : <LocalExplorerTable items={searchResults} {...itemActionProps} />;
+        ? <LocalExplorerGrid  items={sortedSearch} {...itemActionProps} />
+        : <LocalExplorerTable items={sortedSearch} {...itemActionProps} sortBy={sortBy} sortDirection={direction} onSortChange={setSort} />;
     }
 
     if (loading) return <LoadingSkeleton viewMode={viewMode} />;
     if (error)   return <ErrorState message={error} onRetry={refresh} />;
     if (entries.length === 0) return <LocalEmptyState onNewFolder={() => setCreateFolderOpen(true)} />;
+    
+    const sortedEntries = sortFiles(entries, sortBy, direction);
     return viewMode === 'grid'
-      ? <LocalExplorerGrid  items={entries} {...itemActionProps} />
-      : <LocalExplorerTable items={entries} {...itemActionProps} />;
+      ? <LocalExplorerGrid  items={sortedEntries} {...itemActionProps} />
+      : <LocalExplorerTable items={sortedEntries} {...itemActionProps} sortBy={sortBy} sortDirection={direction} onSortChange={setSort} />;
   };
 
   const [isDragOver, setIsDragOver] = useState(false);
+  const dragCounter = useRef(0);
 
   if (!isElectron) return <NotElectronGuard />;
 
@@ -297,50 +320,64 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
         <div
           ref={pageRef}
           tabIndex={-1}
-          className="flex flex-col h-full w-full bg-surface-50 dark:bg-surface-950 outline-none relative"
-          onClick={() => setSelectedItem(null)}
+          className="flex flex-col h-full w-full glass-workspace outline-none relative"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedItem(null);
+          }}
+          onDragEnter={(e) => {
+            if (!currentPath) return;
+            e.preventDefault();
+            e.stopPropagation();
+            dragCounter.current += 1;
+            if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+              setIsDragOver(true);
+            }
+          }}
           onDragOver={(e) => {
             if (!currentPath) return;
             e.preventDefault();
             e.stopPropagation();
             e.dataTransfer.dropEffect = 'copy';
-            setIsDragOver(true);
           }}
           onDragLeave={(e) => {
+            if (!currentPath) return;
             e.preventDefault();
             e.stopPropagation();
-            setIsDragOver(false);
+            dragCounter.current -= 1;
+            if (dragCounter.current === 0) {
+              setIsDragOver(false);
+            }
           }}
           onDrop={(e) => {
             if (!currentPath) return;
             e.preventDefault();
             e.stopPropagation();
+            dragCounter.current = 0;
             setIsDragOver(false);
             handleDropPage(e);
           }}
         >
           {/* Drag Overlay — Earth accent (incoming Cloud→Local download) */}
           {isDragOver && (
-            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-earth-50/95 dark:bg-earth-900/90 backdrop-blur-sm border-2 border-dashed border-earth-600 m-2 rounded-lg pointer-events-none">
-              <div className="bg-surface-0 dark:bg-surface-800 p-5 rounded-full shadow-sm mb-4">
-                <UploadCloud className="w-10 h-10 text-earth-600" />
+            <div className="absolute inset-0 z-50 pointer-events-none border-2 border-dashed border-[#587463] m-2 rounded-lg bg-[#587463]/5 dark:bg-[#587463]/10 transition-all duration-200">
+              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-[#587463] text-white px-6 py-3 rounded-full shadow-lg animate-in slide-in-from-bottom-4 fade-in duration-200">
+                <UploadCloud className="w-5 h-5" />
+                <span className="font-medium text-sm">Drop to download to current folder</span>
               </div>
-              <h3 className="text-lg font-semibold text-earth-600 dark:text-earth-400">Drop to Download</h3>
-              <p className="text-earth-600/70 dark:text-earth-400/70 mt-1 text-sm">File will be saved to the current local folder</p>
             </div>
           )}
 
           {/* Workspace identity header */}
-          <div className="flex items-center gap-3 px-5 py-2.5 border-b border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 shrink-0">
-            <Monitor className="w-5 h-5 text-brand-600 dark:text-brand-400 shrink-0" />
-            <h1 className="text-base font-semibold text-brand-600 dark:text-brand-400 tracking-tight">Local (Earth)</h1>
+          <div className="glass-identity flex items-center gap-3 px-5 py-3 shrink-0">
+            <Monitor className="w-5 h-5 text-[#587463] dark:text-[#587463] shrink-0" />
+            <div>
+              <h1 className="text-sm font-semibold text-[#587463] dark:text-[#587463] leading-tight">Local (Earth)</h1>
+              <p className="text-[11px] text-foreground/80 dark:text-white/80 leading-tight">Browse and manage files on your local device</p>
+            </div>
           </div>
 
-          {/* Earth environment banner */}
-          <EnvironmentBanner environment="local" />
-
           {/* ── Toolbar ── */}
-          <div className="flex items-center justify-between gap-3 py-2 px-4 border-b border-surface-300 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 shrink-0">
+          <div className="glass-toolbar flex items-center justify-between gap-3 py-2 px-4 shrink-0">
             <div className="flex items-center gap-2">
               {currentPath && (
                 <>
@@ -358,13 +395,15 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
                     size="sm"
                     onClick={(e) => { e.stopPropagation(); handleToolbarUpload(); }}
                     disabled={!selectedItem || selectedItem.type === 'FOLDER'}
-                    className="bg-sky-600 hover:bg-sky-700 text-white disabled:opacity-40"
+                    className="bg-sky-600 hover:bg-sky-700 text-white disabled:opacity-40 max-w-[200px]"
                     title={selectedItem ? `Upload "${selectedItem.displayName}" to Cloud` : 'Select a file first'}
                   >
-                    <UploadCloud className="w-4 h-4 mr-1.5" />
-                    {selectedItem && selectedItem.type !== 'FOLDER'
-                      ? `Upload "${selectedItem.displayName}"`
-                      : 'Upload to Cloud'}
+                    <UploadCloud className="w-4 h-4 mr-1.5 shrink-0" />
+                    <span className="truncate block">
+                      {selectedItem && selectedItem.type !== 'FOLDER'
+                        ? `Upload "${selectedItem.displayName}"`
+                        : 'Upload to Cloud'}
+                    </span>
                   </Button>
                 </>
               )}
@@ -376,11 +415,13 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
                   query={searchQuery}
                   onChange={setSearchQuery}
                   onClear={() => setSearchQuery('')}
-                  isLoading={isSearchLoading && isSearchMode}
+                  isLoading={isSearchMode && isSearchLoading}
                 />
               )}
               {currentPath && (
-                <div className="flex items-center border border-surface-300 dark:border-surface-700 rounded-md p-0.5">
+                <div className="flex items-center border border-surface-300 dark:border-surface-700 rounded-md p-0.5 ml-1">
+                  <SortDropdown sortBy={sortBy} direction={direction} onChange={setSort} />
+                  <div className="w-[1px] h-4 bg-surface-300 dark:bg-surface-700 mx-1" />
                   <Button
                     variant="ghost" size="icon"
                     className={`h-7 w-7 rounded-sm ${
@@ -415,14 +456,65 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
 
           {/* ── Search mode indicator ─────────────────────────────────────── */}
           {isSearchMode && currentPath && (
-            <div className="px-6 py-2 text-sm text-surface-500 dark:text-surface-400 border-b border-surface-200 dark:border-surface-800 bg-surface-0 dark:bg-surface-950">
+            <div className="glass-search-indicator px-6 py-2 text-sm text-surface-500 dark:text-surface-400">
               Searching for <span className="font-semibold text-surface-900 dark:text-surface-100">"{debouncedQuery}"</span> in current folder…
             </div>
           )}
 
           {/* ── Content ──────────────────────────────────────────────────── */}
-          <div className="flex-1 overflow-y-auto">
-            {renderBody()}
+          <div className="grid grid-cols-[minmax(0,1fr)_20rem] flex-1 overflow-hidden min-h-0">
+            {/* Main file area */}
+            <div className="overflow-y-auto" onClick={(e) => {
+              // Click on background clears selection
+              if (e.target === e.currentTarget) setSelectedItem(null);
+            }}>
+              {renderBody()}
+            </div>
+
+            {/* Inline details panel column — ALWAYS present so grid width doesn't change */}
+            <div className="overflow-y-auto border-l border-black/10 dark:border-white/10">
+              {selectedItem ? (
+                <div className="p-3 flex flex-col gap-3">
+                  <div className="glass-card rounded-lg p-3 flex flex-col gap-3">
+                    <div className="flex flex-col items-center gap-2 pt-1">
+                    {/* Big icon */}
+                    {selectedItem.type === 'FOLDER'
+                      ? <Folder className="w-10 h-10" style={{ color: '#587463' }} />
+                      : <File className="w-10 h-10" style={{ color: '#587463' }} />
+                    }
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-foreground dark:text-white break-all leading-tight">{selectedItem.displayName}</p>
+                      <p className="text-[11px] text-foreground/60 dark:text-white/60 mt-0.5">{selectedItem.type === 'FOLDER' ? 'File folder' : 'File'}</p>
+                    </div>
+                  </div>
+                  <hr className="border-black/10 dark:border-white/10" />
+                  <dl className="flex flex-col gap-2 text-[11px]">
+                    <div>
+                      <dt className="text-foreground/50 dark:text-white/50 uppercase tracking-wide text-[10px]">Type</dt>
+                      <dd className="text-foreground/80 dark:text-white/80 mt-0.5">{selectedItem.type === 'FOLDER' ? 'Folder' : 'File'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-foreground/50 dark:text-white/50 uppercase tracking-wide text-[10px]">Modified</dt>
+                      <dd className="text-foreground/80 dark:text-white/80 mt-0.5">{selectedItem._local?.updatedAt ? new Date(selectedItem._local.updatedAt).toLocaleDateString() : '—'}</dd>
+                    </div>
+                    {selectedItem.type !== 'FOLDER' && (
+                      <div>
+                        <dt className="text-foreground/50 dark:text-white/50 uppercase tracking-wide text-[10px]">Size</dt>
+                        <dd className="text-foreground/80 dark:text-white/80 mt-0.5">{selectedItem._local?.size ? formatBytes(selectedItem._local.size) : '—'}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </div>
+              </div>
+              ) : (
+                <div className="p-3 flex flex-col gap-3 h-full pt-12">
+                  <div className="glass-card rounded-lg p-6 flex flex-col gap-3 items-center text-center">
+                    <Folder className="w-10 h-10 text-foreground/30 dark:text-white/30" />
+                    <p className="text-[11px] text-foreground/70 dark:text-white/70">Select an item to view its details</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* ── Dialogs ──────────────────────────────────────────────────── */}

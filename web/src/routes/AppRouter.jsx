@@ -7,6 +7,7 @@ import DashboardLayout from '@/layouts/DashboardLayout';
 
 import LoginPage from '@/features/auth/pages/LoginPage';
 import RegisterPage from '@/features/auth/pages/RegisterPage';
+import { VerifyEmailPage } from '@/features/auth/pages/VerifyEmailPage';
 import { ExplorerPage } from '@/features/explorer/pages/ExplorerPage';
 import { TrashPage } from '@/features/trash/pages/TrashPage';
 import { StoragePage } from '@/features/storage/pages/StoragePage';
@@ -24,8 +25,9 @@ function AppRouter() {
       {/* ── Public zone ─────────────────────────────────────────── */}
       <Route element={<PublicRoute />}>
         <Route element={<AuthLayout />}>
-          <Route path="/login"    element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login"        element={<LoginPage />} />
+          <Route path="/register"     element={<RegisterPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
         </Route>
       </Route>
 

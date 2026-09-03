@@ -10,12 +10,14 @@
  */
 
 export const AUTH = {
-  REGISTER: '/auth/register',
-  LOGIN:    '/auth/login',
-  LOGOUT:   '/auth/logout',
-  REFRESH:  '/auth/refresh',
-  ME:       '/auth/me',
-  PASSWORD: '/auth/password',
+  REGISTER:             '/auth/register',
+  LOGIN:                '/auth/login',
+  LOGOUT:               '/auth/logout',
+  REFRESH:              '/auth/refresh',
+  ME:                   '/auth/me',
+  PASSWORD:             '/auth/password',
+  VERIFY_EMAIL:         '/auth/verify-email',
+  RESEND_VERIFICATION:  '/auth/resend-verification',
 };
 
 export const FILES = {
