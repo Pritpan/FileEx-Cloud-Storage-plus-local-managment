@@ -1,0 +1,144 @@
+/* ── Download Section ─────────────────────────────────────── */
+.download-section {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+  background: var(--bg);
+  scroll-margin-top: 58px;
+}
+
+.download-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.download-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  opacity: 0.35;
+}
+
+.download-bg-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(246, 246, 242, 0.55) 0%,
+    rgba(246, 246, 242, 0.90) 100%
+  );
+}
+
+.download-content {
+  position: relative;
+  z-index: 1;
+}
+
+.download-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 18px;
+  background: var(--earth-light);
+  color: var(--earth);
+  margin: 0 auto 20px;
+}
+
+.download-title {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 14px;
+  line-height: 1.22;
+}
+
+.download-sub {
+  font-size: 1.0625rem;
+  color: var(--text);
+  max-width: 480px;
+  margin: 0 auto 36px;
+  line-height: 1.65;
+  opacity: 0.75;
+}
+
+.download-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 32px;
+}
+
+/* Coming soon state */
+.download-coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.download-placeholder {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 26px;
+  border-radius: 9px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.download-placeholder-note {
+  font-size: 0.8125rem;
+  color: var(--text-subtle);
+  max-width: 420px;
+  line-height: 1.6;
+}
+
+.download-placeholder-note code {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 0.78rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--text);
+}
+
+/* Download feature bullets */
+.download-features {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  justify-content: center;
+  font-size: 0.8375rem;
+  color: var(--text-muted);
+}
+
+.download-features li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.download-features li::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--earth);
+  flex-shrink: 0;
+}
+
+@media (max-width: 540px) {
+  .download-icon { width: 56px; height: 56px; border-radius: 14px; }
+}

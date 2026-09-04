@@ -70,7 +70,7 @@ export function useTransfers() {
   const uploadLocalToCloud = useCallback(
     async (localPath, fileName, mimeType, fileSize, parentFolderId) => {
       if (!window.electronAPI) {
-        toast.error('Local uploads require the Fileex desktop app.');
+        toast.error('Local uploads require the FileEX desktop app.');
         return;
       }
 
@@ -138,7 +138,7 @@ export function useTransfers() {
   const downloadCloudToLocal = useCallback(
     async (item, onLocalRefresh, destinationDirPath = null) => {
       if (!window.electronAPI) {
-        toast.error('Local downloads require the Fileex desktop app.');
+        toast.error('Local downloads require the FileEX desktop app.');
         return;
       }
 

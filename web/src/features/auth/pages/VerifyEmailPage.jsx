@@ -33,7 +33,7 @@ export function VerifyEmailPage() {
       .then(() => {
         if (!cancelled) {
           setStatus('success');
-          setMessage('Your email has been verified successfully. You can now log in to Fileex.');
+          setMessage('Your email has been verified successfully. You can now log in to FileEX.');
         }
       })
       .catch((err) => {
@@ -119,7 +119,7 @@ export function VerifyEmailPage() {
 
         <p className="mt-6 text-center text-xs text-surface-500 dark:text-surface-400">
           <MailCheck className="inline w-3.5 h-3.5 mr-1 -mt-0.5" />
-          Fileex — secure cloud file storage
+          FileEX — secure cloud file storage
         </p>
       </div>
     </div>

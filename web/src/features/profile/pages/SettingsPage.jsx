@@ -88,7 +88,7 @@ export function SettingsPage() {
               </Avatar>
               <div className="flex-1 min-w-0">
                 <h2 className="text-2xl font-bold text-foreground dark:text-white truncate">
-                  {profile?.name || 'Fileex User'}
+                  {profile?.name || 'FileEX User'}
                 </h2>
                 <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4 mt-2 text-foreground/60 dark:text-white/60 text-sm font-medium">
                   <span className="flex items-center gap-1.5 min-w-0">
@@ -161,7 +161,7 @@ export function SettingsPage() {
               <CardTitle className="text-base flex items-center gap-2">
                 <Palette className="w-4 h-4 text-surface-500" /> Appearance
               </CardTitle>
-              <CardDescription>Customize how Fileex looks on your device.</CardDescription>
+              <CardDescription>Customize how FileEX looks on your device.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="flex items-center justify-between">
@@ -218,7 +218,7 @@ export function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               {[
-                ['Application', 'Fileex'],
+                ['Application', 'FileEX'],
                 ['Version', 'v1.0.0-beta'],
               ].map(([key, val]) => (
                 <div key={key} className="flex items-center justify-between">

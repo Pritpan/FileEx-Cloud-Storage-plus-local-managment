@@ -31,7 +31,7 @@ export function Sidebar() {
           <Layers className="w-5 h-5 text-brand-600 dark:text-brand-400 shrink-0" />
           {!collapsed && (
             <span className="font-semibold text-base text-foreground dark:text-white tracking-tight truncate">
-              Fileex
+              FileEX
             </span>
           )}
         </div>

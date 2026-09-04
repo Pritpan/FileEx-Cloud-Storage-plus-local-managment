@@ -1,5 +1,5 @@
 /**
- * API endpoint constants — Fileex
+ * API endpoint constants — FileEX
  *
  * All API endpoint strings are centralized here.
  * No feature file should hardcode a path string.

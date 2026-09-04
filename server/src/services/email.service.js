@@ -1,5 +1,5 @@
 /**
- * email.service.js — Fileex transactional email service
+ * email.service.js — FileEX transactional email service
  *
  * Uses Nodemailer with an SMTP transport configured fully from environment
  * variables. No credentials are ever hardcoded.
@@ -7,7 +7,7 @@
  * Required env vars:
  *   SMTP_HOST, SMTP_PORT, SMTP_SECURE (true/false),
  *   SMTP_USER, SMTP_PASS,
- *   EMAIL_FROM   (e.g. "Fileex <no-reply@fileex.app>")
+ *   EMAIL_FROM   (e.g. "FileEX <no-reply@fileex.app>")
  *   CLIENT_URL   (e.g. https://app.fileex.app or http://localhost:5173)
  */
 
@@ -43,7 +43,7 @@ export async function sendVerificationEmail({ to, name, rawToken }) {
   const clientUrl  = process.env.CLIENT_URL || 'http://localhost:5174';
   const verifyUrl  = `${clientUrl}/verify-email?token=${rawToken}`;
   const expiryHrs  = parseInt(process.env.EMAIL_VERIFY_EXPIRY_HOURS || '24', 10);
-  const fromAddr   = process.env.EMAIL_FROM || '"Fileex" <no-reply@fileex.app>';
+  const fromAddr   = process.env.EMAIL_FROM || '"FileEX" <no-reply@fileex.app>';
 
   // Skip actual sending in test environment
   if (process.env.NODE_ENV === 'test') {
@@ -55,19 +55,19 @@ export async function sendVerificationEmail({ to, name, rawToken }) {
   await transporter.sendMail({
     from:    fromAddr,
     to,
-    subject: 'Verify your Fileex email address',
+    subject: 'Verify your FileEX email address',
     text: [
       `Hi ${name},`,
       '',
-      'Welcome to Fileex! Please verify your email address to activate your account.',
+      'Welcome to FileEX! Please verify your email address to activate your account.',
       '',
       `Verification link: ${verifyUrl}`,
       '',
       `This link expires in ${expiryHrs} hour${expiryHrs !== 1 ? 's' : ''}.`,
       '',
-      'If you did not create a Fileex account, you can safely ignore this email.',
+      'If you did not create a FileEX account, you can safely ignore this email.',
       '',
-      '— The Fileex Team',
+      '— The FileEX Team',
     ].join('\n'),
     html: `
 <!DOCTYPE html>
@@ -75,7 +75,7 @@ export async function sendVerificationEmail({ to, name, rawToken }) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Verify your Fileex email</title>
+  <title>Verify your FileEX email</title>
 </head>
 <body style="margin:0;padding:0;background:#F6F6F2;font-family:'Segoe UI',Helvetica,Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#F6F6F2;padding:40px 0;">
@@ -88,7 +88,7 @@ export async function sendVerificationEmail({ to, name, rawToken }) {
           <tr>
             <td style="background:#587463;padding:28px 40px;text-align:center;">
               <span style="font-size:24px;font-weight:700;color:#ffffff;letter-spacing:-0.5px;">
-                &#9729;&#xfe0f; Fileex
+                &#9729;&#xfe0f; FileEX
               </span>
             </td>
           </tr>
@@ -99,7 +99,7 @@ export async function sendVerificationEmail({ to, name, rawToken }) {
               <h2 style="margin:0 0 8px;font-size:20px;color:#242724;">Verify your email address</h2>
               <p style="margin:0 0 24px;font-size:15px;color:#515650;line-height:1.6;">
                 Hi <strong>${name}</strong>,<br/>
-                Welcome to Fileex! Click the button below to verify your email address and activate your account.
+                Welcome to FileEX! Click the button below to verify your email address and activate your account.
               </p>
               <a href="${verifyUrl}"
                 style="display:inline-block;background:#587463;color:#ffffff;padding:14px 32px;
@@ -108,7 +108,7 @@ export async function sendVerificationEmail({ to, name, rawToken }) {
               </a>
               <p style="margin:24px 0 0;font-size:13px;color:#727771;">
                 This link expires in <strong>${expiryHrs} hour${expiryHrs !== 1 ? 's' : ''}</strong>.
-                If you did not create a Fileex account, you can safely ignore this email.
+                If you did not create a FileEX account, you can safely ignore this email.
               </p>
             </td>
           </tr>
@@ -124,7 +124,7 @@ export async function sendVerificationEmail({ to, name, rawToken }) {
           <tr>
             <td style="padding:20px 40px;text-align:center;">
               <p style="margin:0;font-size:12px;color:#9BA59F;">
-                © ${new Date().getFullYear()} Fileex. All rights reserved.
+                © ${new Date().getFullYear()} FileEX. All rights reserved.
               </p>
             </td>
           </tr>

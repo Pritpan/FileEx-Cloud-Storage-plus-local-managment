@@ -382,18 +382,18 @@ body { margin: 0; }
 /* ── Auth page card (Login / Register) ──────────────────────────────────────
    Sits directly over the background image. Needs stronger opacity.          */
 .glass-card.shadow-lg {
-  background: rgba(255, 255, 255, 0.88) !important;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(242, 243, 239, 0.85) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: #242724 !important;
 }
 .glass-card.shadow-lg * {
   color: inherit;
 }
 .dark .glass-card.shadow-lg {
-  background: rgba(16, 22, 19, 0.90) !important;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(16, 22, 19, 0.60) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: #E6EBE7 !important;
 }
 .dark .glass-card.shadow-lg *:not(svg):not(path) {
@@ -520,17 +520,17 @@ body { background: transparent !important; }
 
 /* ── Grid / detail cards ── 75% warm off-white light / 50% dark  */
 .glass-card {
-  background: rgba(240, 241, 237, 0.75);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(170, 177, 165, 0.35);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  background: rgba(242, 243, 239, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(170, 177, 165, 0.40);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 .dark .glass-card {
-  background: rgba(16, 22, 19, 0.50);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(16, 22, 19, 0.60);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 1px 4px rgba(0,0,0,0.18);
 }
 

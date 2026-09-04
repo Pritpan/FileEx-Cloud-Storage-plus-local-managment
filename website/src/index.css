@@ -1,0 +1,122 @@
+@import "@fontsource-variable/inter";
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
+
+  /* We map standard Tailwind colors to our CSS variables so they adapt to dark mode automatically */
+  --color-earth: var(--earth);
+  --color-earth-hover: var(--earth-hover);
+  --color-earth-light: var(--earth-light);
+  
+  --color-sky: var(--sky);
+  --color-sky-hover: var(--sky-hover);
+  --color-sky-light: var(--sky-light);
+  
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  
+  --color-text: var(--text-color);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:root {
+  --earth: #587463;
+  --earth-hover: #496455;
+  --earth-light: #DDE6DF;
+  --sky: #5D82A6;
+  --sky-hover: #4D7091;
+  --sky-light: #DDE8F2;
+  
+  --bg: #F6F6F2;
+  --surface: #ffffff;
+  --surface-2: #F0F1ED;
+  --border: #D9DCD7;
+  
+  --text-color: #242724;
+  --text-muted: #727771;
+  --text-subtle: #9ba09a;
+}
+
+.dark {
+  --bg: #141817;
+  --surface: #1B201E;
+  --surface-2: #232926;
+  --border: #2e3532;
+  
+  --text-color: #e6ebe7;
+  --text-muted: #8a9490;
+  --text-subtle: #5a625e;
+  
+  --earth: #6f927d;
+  --earth-hover: #82a38f;
+  --earth-light: #293b32;
+  
+  --sky: #7198be;
+  --sky-hover: #83a8cc;
+  --sky-light: #1e2d3d;
+}
+
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    font-size: 16px;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--bg);
+    color: var(--text-color);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition: background-color 0.25s var(--ease), color 0.2s var(--ease);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--sky);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  a { color: inherit; text-decoration: none; }
+  img, picture, video { display: block; max-width: 100%; }
+}
+
+/* ── Animations ───────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scrollBob {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50%       { transform: translateX(-50%) translateY(4px); }
+}
+
+.fade-up              { animation: fadeUp 0.5s var(--ease) both; }
+.fade-up-delay-1      { animation-delay: 0.1s; }
+.fade-up-delay-2      { animation-delay: 0.2s; }
+.fade-up-delay-3      { animation-delay: 0.3s; }
+.fade-up-delay-4      { animation-delay: 0.4s; }
+
+/* ── Skip link ─────────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  top: -9999px;
+  left: 8px;
+  z-index: 9999;
+  background: var(--earth);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 0 0 6px 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+.skip-link:focus { top: 0; }

@@ -43,7 +43,7 @@ const PROD_FILE = path.join(__dirname, '..', 'web', 'dist', 'index.html');
  * Only the Main Process owns this data — the renderer cannot construct it.
  */
 ipcMain.handle('app:get-info', () => ({
-  name: 'Fileex',
+  name: 'FileEX',
   platform: process.platform,
 }));
 

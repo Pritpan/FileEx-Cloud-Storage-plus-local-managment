@@ -55,7 +55,7 @@ function NotElectronGuard() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center h-full">
       <p className="text-lg font-medium text-surface-900 dark:text-surface-100 mb-2">
-        Local Explorer is only available in the Fileex desktop app.
+        Local Explorer is only available in the FileEX desktop app.
       </p>
       <p className="text-sm text-surface-500 dark:text-surface-400">
         Open this page in the Electron application to browse your local files.
