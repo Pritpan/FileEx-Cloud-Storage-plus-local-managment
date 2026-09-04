@@ -35,19 +35,21 @@ const handleService = async (res, fn) => {
 };
 
 const setRefreshCookie = (res, refreshToken) => {
+  const isProd = process.env.NODE_ENV === 'production';
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     path: '/api/v1/auth/refresh',
   });
 };
 
 const clearRefreshCookie = (res) => {
+  const isProd = process.env.NODE_ENV === 'production';
   res.clearCookie('refreshToken', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
     path: '/api/v1/auth/refresh',
   });
 };
