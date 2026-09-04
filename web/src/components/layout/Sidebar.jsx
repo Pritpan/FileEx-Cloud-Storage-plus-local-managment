@@ -15,7 +15,7 @@ export function Sidebar() {
   return (
     <aside
       className={`
-        glass-sidebar
+        bg-white/60 dark:bg-black/40 backdrop-blur-md border-r border-black/10 dark:border-white/10
         flex-shrink-0 flex flex-col
         h-screen hidden md:flex overflow-hidden
         transition-all duration-200 ease-in-out
