@@ -2,8 +2,9 @@ import bcrypt from 'bcrypt';
 import prisma from '../../config/prisma.js';
 import authRepository from './auth.repository.js';
 import storageStatsRepository from '../storage/storage-stats.repository.js';
-import { generateTokenPair, generateVerificationToken, hashToken } from './token.service.js';
-import { sendVerificationEmail } from '../../services/email.service.js';
+import { generateTokenPair, generateVerificationToken, generatePasswordResetToken, hashToken } from './token.service.js';
+import { sendVerificationEmail, sendPasswordResetEmail } from '../../services/email.service.js';
+import { deleteAllUserFiles } from '../files/file.service.js';
 
 const SALT_ROUNDS = 10;
 
@@ -241,5 +242,93 @@ export const resendVerification = async (email) => {
   };
 };
 
+export const deleteAccount = async (userId) => {
+  const user = await authRepository.findUserById(userId);
+  if (!user) {
+    throw createServiceError('User not found.', 404, 'NOT_FOUND');
+  }
+
+  // First securely delete all files (S3 and DB) bottom-up
+  await deleteAllUserFiles(userId);
+
+  // Then delete the user. Thanks to Prisma schema cascade, this deletes:
+  // refreshTokens, emailVerifyTokens, and storageStats automatically.
+  await prisma.user.delete({ where: { id: userId } });
+
+  return { success: true, message: 'Account deleted successfully.' };
+};
 
 
+
+
+export const changePassword = async (userId, currentPassword, newPassword) => {
+  const user = await authRepository.findUserById(userId);
+  if (!user) throw createServiceError('User not found.', 404, 'NOT_FOUND');
+  
+  const match = await bcrypt.compare(currentPassword, user.hashedPassword);
+  if (!match) throw createServiceError('Incorrect current password.', 400, 'INVALID_PASSWORD');
+  
+  const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await authRepository.updateUser(userId, { hashedPassword });
+  
+  return { success: true, message: 'Password updated successfully.' };
+};
+
+export const forgotPassword = async (email) => {
+  const user = await authRepository.findUserByEmail(email);
+  if (!user) {
+    // Return same message regardless of whether the user exists to prevent enumeration
+    return {
+      success: true,
+      message: 'If an account exists for this email, you\'ll receive a password reset link shortly.',
+    };
+  }
+
+  // Generate and save token
+  const { rawToken, tokenHash, expiresAt } = generatePasswordResetToken();
+  await authRepository.savePasswordResetToken({ userId: user.id, tokenHash, expiresAt });
+
+  // Send the reset email
+  await sendPasswordResetEmail({
+    to: user.email,
+    name: user.name,
+    rawToken,
+  });
+
+  return {
+    success: true,
+    message: 'If an account exists for this email, you\'ll receive a password reset link shortly.',
+  };
+};
+
+export const resetPassword = async (rawToken, newPassword) => {
+  const tokenHash = hashToken(rawToken);
+  const resetRecord = await authRepository.findPasswordResetToken(tokenHash);
+
+  if (!resetRecord || resetRecord.usedAt !== null) {
+    throw createServiceError('Invalid or expired password reset link.', 400, 'TOKEN_INVALID');
+  }
+
+  if (new Date() > resetRecord.expiresAt) {
+    throw createServiceError('This password reset link has expired.', 400, 'TOKEN_EXPIRED');
+  }
+
+  // Hash new password and update user
+  const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  
+  await prisma.$transaction(async (tx) => {
+    // 1. Update user password
+    await authRepository.updateUser(resetRecord.userId, { hashedPassword }, tx);
+    
+    // 2. Invalidate all existing refresh tokens
+    await authRepository.deleteAllRefreshTokens(resetRecord.userId, tx);
+    
+    // 3. Mark token as used
+    await authRepository.markPasswordResetTokenUsed(resetRecord.id, tx);
+  });
+
+  return {
+    success: true,
+    message: 'Password reset successfully. You can now log in.',
+  };
+};

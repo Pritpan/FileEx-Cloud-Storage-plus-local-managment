@@ -99,3 +99,23 @@ export const destructiveLimiter = rateLimit({
   keyGenerator: keyGeneratorAuth,
   message: 'Too many destructive operations. Please try again later.'
 });
+
+export const forgotPasswordLimiter = rateLimit({
+  windowMs: rateLimitConfig.forgotPassword.windowMs,
+  max: rateLimitConfig.forgotPassword.max,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler,
+  keyGenerator: keyGeneratorIp, // Cannot use email or user because we don't want to expose existence
+  message: 'Too many password reset requests. Please try again later.'
+});
+
+export const resetPasswordLimiter = rateLimit({
+  windowMs: rateLimitConfig.resetPassword.windowMs,
+  max: rateLimitConfig.resetPassword.max,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler,
+  keyGenerator: keyGeneratorIp,
+  message: 'Too many reset attempts. Please try again later.'
+});

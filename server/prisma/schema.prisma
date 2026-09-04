@@ -32,6 +32,7 @@ model User {
   files                File[]
   storageStats         StorageStats?
   emailVerifyTokens    EmailVerificationToken[]
+  passwordResetTokens  PasswordResetToken[]
 
   @@map("users")
 }
@@ -62,6 +63,20 @@ model EmailVerificationToken {
 
   @@index([userId])
   @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique @db.VarChar(64)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 model File {

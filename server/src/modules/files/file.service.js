@@ -783,3 +783,52 @@ export const getProperties = async (id, userId) => {
   };
 };
 
+export const deleteAllUserFiles = async (userId) => {
+  const allFiles = await prisma.file.findMany({
+    where: { ownerId: userId }
+  });
+
+  if (allFiles.length === 0) return;
+
+  const storageKeysToDelete = allFiles
+    .filter(f => f.type === 'FILE' && f.storageKey)
+    .map(f => f.storageKey);
+
+  for (const key of storageKeysToDelete) {
+    try {
+      await storageService.deleteObject(key);
+    } catch (err) {
+      if (err instanceof StorageError) {
+        throw createServiceError(
+          'Storage service is temporarily unavailable. Please try again.',
+          503,
+          'STORAGE_UNAVAILABLE'
+        );
+      }
+      throw err;
+    }
+  }
+
+  const depthMap = new Map();
+  const getDepth = (id) => {
+    if (depthMap.has(id)) return depthMap.get(id);
+    const file = allFiles.find(f => f.id === id);
+    if (!file || !file.parentId) {
+      depthMap.set(id, 0);
+      return 0;
+    }
+    const depth = getDepth(file.parentId) + 1;
+    depthMap.set(id, depth);
+    return depth;
+  };
+
+  allFiles.forEach(f => getDepth(f.id));
+  allFiles.sort((a, b) => depthMap.get(b.id) - depthMap.get(a.id));
+
+  await prisma.$transaction(async (tx) => {
+    for (const file of allFiles) {
+      await tx.file.delete({ where: { id: file.id } });
+    }
+  });
+};
+

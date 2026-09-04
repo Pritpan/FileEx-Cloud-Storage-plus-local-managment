@@ -1,5 +1,6 @@
 import { ExternalLink } from 'lucide-react';
 import { SITE, DOWNLOADS, WEB_APP } from '../config';
+import { useTheme } from '../context/ThemeContext';
 
 function GithubIcon({ size = 14 }) {
   return (
@@ -17,6 +18,7 @@ const PRODUCT_LINKS = [
 
 export function Footer() {
   const year = new Date().getFullYear();
+  const { dark } = useTheme();
 
   return (
     <footer className="bg-surface border-t border-border pt-14 transition-colors duration-200">
@@ -25,7 +27,11 @@ export function Footer() {
         {/* Brand */}
         <div className="max-w-[280px] max-md:col-span-2 max-sm:col-span-1 max-md:max-w-full">
           <a href="#" aria-label="FileEX home" className="inline-flex items-center gap-2 mb-3.5 no-underline">
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-[5px] bg-earth text-white font-bold text-[0.8125rem] flex-shrink-0">F</span>
+            <img
+              src={dark ? "/logo-dark.png" : "/logo-light.png"}
+              alt="FileEX Logo"
+              className="w-6 h-6 rounded-[5px] object-cover flex-shrink-0"
+            />
             <span className="text-[0.9375rem] font-[650] text-text tracking-[-0.01em]">{SITE.name}</span>
           </a>
           <p className="text-sm text-muted leading-relaxed">{SITE.description}</p>
@@ -50,8 +56,8 @@ export function Footer() {
         {/* Resources */}
         <nav aria-label="Footer resources" className="flex flex-col">
           <p className="text-[0.6875rem] font-bold uppercase tracking-[0.08em] text-subtle mb-3.5">Resources</p>
-          <a href={WEB_APP.login} target="_blank" rel="noopener noreferrer" className="py-1 text-sm text-muted hover:text-text transition-colors duration-150 no-underline">Login</a>
-          <a href={WEB_APP.register} target="_blank" rel="noopener noreferrer" className="py-1 text-sm text-muted hover:text-text transition-colors duration-150 no-underline">Register</a>
+          <a href={`${WEB_APP.login}?theme=${dark ? 'dark' : 'light'}`} target="_blank" rel="noopener noreferrer" className="py-1 text-sm text-muted hover:text-text transition-colors duration-150 no-underline">Login</a>
+          <a href={`${WEB_APP.register}?theme=${dark ? 'dark' : 'light'}`} target="_blank" rel="noopener noreferrer" className="py-1 text-sm text-muted hover:text-text transition-colors duration-150 no-underline">Register</a>
           <a href="#download" className="py-1 text-sm text-muted hover:text-text transition-colors duration-150 no-underline">Download</a>
           <a href="#how-it-works" className="py-1 text-sm text-muted hover:text-text transition-colors duration-150 no-underline">Getting Started</a>
           {SITE.github && (

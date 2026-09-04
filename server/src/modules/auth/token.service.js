@@ -37,3 +37,17 @@ export const generateVerificationToken = () => {
   const expiresAt = new Date(Date.now() + expiryHours * 60 * 60 * 1000);
   return { rawToken, tokenHash, expiresAt };
 };
+
+/**
+ * generatePasswordResetToken
+ *
+ * Creates a secure random token for password resets.
+ * DEFAULT expiry: 30 minutes, overridable via PASSWORD_RESET_TOKEN_EXPIRY_MINUTES env var.
+ */
+export const generatePasswordResetToken = () => {
+  const expiryMinutes = parseInt(process.env.PASSWORD_RESET_TOKEN_EXPIRY_MINUTES || '30', 10);
+  const rawToken  = crypto.randomBytes(48).toString('hex');
+  const tokenHash = hashToken(rawToken);
+  const expiresAt = new Date(Date.now() + expiryMinutes * 60 * 1000);
+  return { rawToken, tokenHash, expiresAt };
+};

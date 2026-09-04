@@ -76,7 +76,7 @@ export function Hero() {
 
             {/* Open web app */}
             <a
-              href={WEB_APP.app}
+              href={`${WEB_APP.app}?theme=${dark ? 'dark' : 'light'}`}
               target="_blank"
               rel="noopener noreferrer"
               className="

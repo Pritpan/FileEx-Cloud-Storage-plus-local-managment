@@ -520,6 +520,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: 'FileEx',
+    icon: path.join(__dirname, 'assets', 'icon.png'),
     show: false, // prevent white flash — show only when ready-to-show fires
     webPreferences: {
       // Path to the preload script.

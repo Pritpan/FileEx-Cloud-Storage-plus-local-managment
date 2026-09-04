@@ -11,14 +11,21 @@ import { useTransferProgressBridge } from '@/features/upload/hooks/useTransfers'
  */
 function App() {
   const { setAuth, clearAuth } = useAuthStore();
-  const initTheme = useThemeStore((s) => s.init);
+  const { init: initTheme, setTheme } = useThemeStore();
 
   // E6: Subscribe to Electron transfer progress events (no-op in browser)
   useTransferProgressBridge();
 
   useEffect(() => {
-    // Apply saved theme before first paint to avoid flash
-    initTheme();
+    // Check for theme query parameter (e.g. ?theme=dark) from website referral
+    const params = new URLSearchParams(window.location.search);
+    const queryTheme = params.get('theme');
+    if (queryTheme === 'light' || queryTheme === 'dark') {
+      setTheme(queryTheme);
+    } else {
+      // Apply saved theme before first paint to avoid flash
+      initTheme();
+    }
 
     const restoreSession = async () => {
       try {
@@ -31,7 +38,7 @@ function App() {
     };
     
     restoreSession();
-  }, [setAuth, clearAuth, initTheme]);
+  }, [setAuth, clearAuth, initTheme, setTheme]);
 
   return (
     <>

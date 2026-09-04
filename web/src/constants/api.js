@@ -18,6 +18,7 @@ export const AUTH = {
   PASSWORD:             '/auth/password',
   VERIFY_EMAIL:         '/auth/verify-email',
   RESEND_VERIFICATION:  '/auth/resend-verification',
+  DELETE_ACCOUNT:       '/auth/account',
 };
 
 export const FILES = {

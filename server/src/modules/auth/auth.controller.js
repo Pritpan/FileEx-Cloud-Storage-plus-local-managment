@@ -1,5 +1,5 @@
 import * as authService from './auth.service.js';
-import { RegisterSchema, LoginSchema, UpdateProfileSchema, ResendVerificationSchema } from './auth.schema.js';
+import { RegisterSchema, LoginSchema, UpdateProfileSchema, ResendVerificationSchema, ForgotPasswordSchema, ResetPasswordSchema, ChangePasswordSchema } from './auth.schema.js';
 
 const validate = (schema, body) => {
   const parsed = schema.safeParse(body);
@@ -145,6 +145,38 @@ export const resendVerification = async (req, res) => {
   if (!ok) return res.status(400).json(response);
 
   const result = await handleService(res, () => authService.resendVerification(data.email));
+  if (result) res.status(200).json(result);
+};
+
+export const deleteAccount = async (req, res) => {
+  const result = await handleService(res, () => authService.deleteAccount(req.user.id));
+  if (result) {
+    clearRefreshCookie(res);
+    res.status(200).json(result);
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  const { ok, data, response } = validate(ForgotPasswordSchema, req.body);
+  if (!ok) return res.status(400).json(response);
+
+  const result = await handleService(res, () => authService.forgotPassword(data.email));
+  if (result) res.status(200).json(result);
+};
+
+export const resetPassword = async (req, res) => {
+  const { ok, data, response } = validate(ResetPasswordSchema, req.body);
+  if (!ok) return res.status(400).json(response);
+
+  const result = await handleService(res, () => authService.resetPassword(data.token, data.newPassword));
+  if (result) res.status(200).json(result);
+};
+
+export const changePassword = async (req, res) => {
+  const { ok, data, response } = validate(ChangePasswordSchema, req.body);
+  if (!ok) return res.status(400).json(response);
+
+  const result = await handleService(res, () => authService.changePassword(req.user.id, data.currentPassword, data.newPassword));
   if (result) res.status(200).json(result);
 };
 

@@ -18,6 +18,8 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { formatBytes, formatDate } from '@/features/explorer/components/ExplorerItem';
 import { EditProfileDialog } from '../components/EditProfileDialog';
+import { DeleteAccountDialog } from '../components/DeleteAccountDialog';
+import { ChangePasswordDialog } from '../components/ChangePasswordDialog';
 
 const getInitials = (name) => {
   if (!name) return 'U';
@@ -33,6 +35,8 @@ export function SettingsPage() {
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [passwordOpen, setPasswordOpen] = useState(false);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -77,10 +81,9 @@ export function SettingsPage() {
 
         {/* ── Profile Card ── */}
         <Card className="glass-card shadow-sm border-none overflow-hidden">
-          <div className="h-20 bg-brand-600 dark:bg-brand-700" />
-          <CardContent className="px-8 pb-8 pt-0 relative">
-            <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-12 md:-mt-16 mb-6">
-              <Avatar className="w-24 h-24 md:w-32 md:h-32 border-4 border-surface-0 dark:border-surface-900 shadow-sm">
+          <CardContent className="px-8 pb-8 pt-8">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-6 mb-6">
+              <Avatar className="w-24 h-24 md:w-32 md:h-32 shadow-sm">
                 <AvatarImage src="" />
                 <AvatarFallback className="text-3xl bg-brand-100 text-brand-600 font-bold">
                   {getInitials(profile?.name)}
@@ -139,7 +142,9 @@ export function SettingsPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/60 dark:text-white/60">Password</span>
-                    <span className="text-sm font-medium text-foreground dark:text-white">••••••••</span>
+                    <Button variant="outline" size="sm" onClick={() => setPasswordOpen(true)}>
+                      Change
+                    </Button>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-foreground/60 dark:text-white/60">Two-Factor Auth</span>
@@ -254,16 +259,43 @@ export function SettingsPage() {
                   Log Out
                 </Button>
               </div>
+
+              <Separator className="my-5 border-red-200/50 dark:border-red-900/30" />
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground dark:text-white">Delete account</p>
+                  <p className="text-sm text-foreground/60 dark:text-white/60">Permanently delete your account and all files.</p>
+                </div>
+                <Button
+                  variant="destructive"
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  Delete Account
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Edit Profile Dialog */}
       <EditProfileDialog
         open={editOpen}
         onOpenChange={setEditOpen}
         profile={profile}
+      />
+
+      {/* Delete Account Dialog */}
+      <DeleteAccountDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+      />
+
+      {/* Change Password Dialog */}
+      <ChangePasswordDialog
+        open={passwordOpen}
+        onOpenChange={setPasswordOpen}
       />
     </div>
   );

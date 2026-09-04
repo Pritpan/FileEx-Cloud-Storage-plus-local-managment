@@ -28,7 +28,8 @@ export function Sidebar() {
         onClick={toggleSidebar}
       >
         <div className={`flex items-center gap-2 min-w-0 ${collapsed ? 'justify-center w-full' : ''}`}>
-          <Layers className="w-5 h-5 text-brand-600 dark:text-brand-400 shrink-0" />
+          <img src="/logo-light.png" alt="FileEX" className="w-6 h-6 object-cover rounded shrink-0 block dark:hidden" />
+          <img src="/logo-dark.png"  alt="FileEX" className="w-6 h-6 object-cover rounded shrink-0 hidden dark:block" />
           {!collapsed && (
             <span className="font-semibold text-base text-foreground dark:text-white tracking-tight truncate">
               FileEX

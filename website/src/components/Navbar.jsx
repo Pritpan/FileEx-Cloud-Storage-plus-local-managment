@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Menu, X, Download } from 'lucide-react';
 import { SITE, DOWNLOADS, WEB_APP } from '../config';
 import { ThemeToggle } from './ThemeToggle';
+import { useTheme } from '../context/ThemeContext';
 
 const NAV_LINKS = [
   { label: 'Features',     href: '#features' },
@@ -12,6 +13,7 @@ const NAV_LINKS = [
 export function Navbar() {
   const [open, setOpen] = useState(false);
   const hasDownload = Object.values(DOWNLOADS).some(Boolean);
+  const { dark } = useTheme();
 
   return (
     <header className="
@@ -24,14 +26,11 @@ export function Navbar() {
 
         {/* Logo */}
         <a href="#" aria-label="FileEX home" className="flex items-center gap-2 flex-shrink-0 no-underline">
-          <span
-            aria-hidden="true"
-            className="
-              inline-flex items-center justify-center w-[30px] h-[30px]
-              rounded-[7px] bg-earth text-white font-bold text-base
-              transition-colors duration-200
-            "
-          >F</span>
+          <img
+            src={dark ? "/logo-dark.png" : "/logo-light.png"}
+            alt="FileEX Logo"
+            className="w-[30px] h-[30px] rounded-[7px] object-cover"
+          />
           <span className="text-[1.0625rem] font-[650] text-text tracking-[-0.01em] transition-colors duration-200">
             {SITE.name}
           </span>
@@ -58,7 +57,7 @@ export function Navbar() {
         <div className="hidden md:flex items-center gap-2">
           {/* Auth links */}
           <a
-            href={WEB_APP.login}
+            href={`${WEB_APP.login}?theme=${dark ? 'dark' : 'light'}`}
             target="_blank"
             rel="noopener noreferrer"
             className="
@@ -70,7 +69,7 @@ export function Navbar() {
             Login
           </a>
           <a
-            href={WEB_APP.register}
+            href={`${WEB_APP.register}?theme=${dark ? 'dark' : 'light'}`}
             target="_blank"
             rel="noopener noreferrer"
             className="
@@ -152,7 +151,7 @@ export function Navbar() {
             {/* Mobile auth links */}
             <hr className="border-border my-2" />
             <a
-              href={WEB_APP.login}
+              href={`${WEB_APP.login}?theme=${dark ? 'dark' : 'light'}`}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setOpen(false)}
@@ -161,7 +160,7 @@ export function Navbar() {
               Login
             </a>
             <a
-              href={WEB_APP.register}
+              href={`${WEB_APP.register}?theme=${dark ? 'dark' : 'light'}`}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setOpen(false)}

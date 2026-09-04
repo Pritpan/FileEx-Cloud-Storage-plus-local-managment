@@ -131,6 +131,41 @@ const deleteEmailVerificationTokensForUser = async (userId, db = prisma) => {
   });
 };
 
+// ── Password Reset Token ─────────────────────────────────────────────────────
+
+const savePasswordResetToken = async ({ userId, tokenHash, expiresAt }, db = prisma) => {
+  return db.passwordResetToken.create({
+    data: { userId, tokenHash, expiresAt },
+    select: { id: true },
+  });
+};
+
+const findPasswordResetToken = async (tokenHash, db = prisma) => {
+  return db.passwordResetToken.findUnique({
+    where: { tokenHash },
+    select: {
+      id: true,
+      userId: true,
+      tokenHash: true,
+      expiresAt: true,
+      usedAt: true,
+    },
+  });
+};
+
+const markPasswordResetTokenUsed = async (id, db = prisma) => {
+  return db.passwordResetToken.update({
+    where: { id },
+    data: { usedAt: new Date() },
+  });
+};
+
+const deletePasswordResetTokensForUser = async (userId, db = prisma) => {
+  return db.passwordResetToken.deleteMany({
+    where: { userId, usedAt: null },
+  });
+};
+
 const authRepository = {
   findUserByEmail,
   findUserById,
@@ -145,6 +180,11 @@ const authRepository = {
   findEmailVerificationToken,
   markEmailVerificationTokenUsed,
   deleteEmailVerificationTokensForUser,
+  // Password reset
+  savePasswordResetToken,
+  findPasswordResetToken,
+  markPasswordResetTokenUsed,
+  deletePasswordResetTokensForUser,
 };
 
 export default authRepository;

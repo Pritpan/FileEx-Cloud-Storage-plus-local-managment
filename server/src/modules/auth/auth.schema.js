@@ -53,3 +53,27 @@ export const ResendVerificationSchema = z.object({
     .toLowerCase()
     .email('Please provide a valid email address.'),
 });
+
+export const ForgotPasswordSchema = z.object({
+  email: z
+    .string({ required_error: 'Email is required.' })
+    .trim()
+    .toLowerCase()
+    .email('Please provide a valid email address.'),
+});
+
+export const ResetPasswordSchema = z.object({
+  token: z.string({ required_error: 'Reset token is required.' }),
+  newPassword: z
+    .string({ required_error: 'New password is required.' })
+    .min(8, 'Password must be at least 8 characters.')
+    .max(100, 'Password must not exceed 100 characters.'),
+});
+
+export const ChangePasswordSchema = z.object({
+  currentPassword: z.string({ required_error: 'Current password is required.' }),
+  newPassword: z
+    .string({ required_error: 'New password is required.' })
+    .min(8, 'Password must be at least 8 characters.')
+    .max(100, 'Password must not exceed 100 characters.'),
+});

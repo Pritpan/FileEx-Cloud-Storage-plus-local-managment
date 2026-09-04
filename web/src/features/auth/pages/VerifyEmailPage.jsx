@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle2, XCircle, Loader2, MailCheck } from 'lucide-react';
 
@@ -17,6 +17,8 @@ export function VerifyEmailPage() {
   const [status, setStatus] = useState('loading'); // 'loading' | 'success' | 'error'
   const [message, setMessage] = useState('');
 
+  const hasAttempted = useRef(false);
+
   useEffect(() => {
     const token = searchParams.get('token');
 
@@ -26,33 +28,28 @@ export function VerifyEmailPage() {
       return;
     }
 
-    let cancelled = false;
+    if (hasAttempted.current) return;
+    hasAttempted.current = true;
 
     authService
       .verifyEmail(token)
       .then(() => {
-        if (!cancelled) {
-          setStatus('success');
-          setMessage('Your email has been verified successfully. You can now log in to FileEX.');
-        }
+        setStatus('success');
+        setMessage('Your email has been verified successfully. You can now log in to FileEX.');
       })
       .catch((err) => {
-        if (!cancelled) {
-          setStatus('error');
-          const code = err.response?.data?.error?.code;
-          const msg  = err.response?.data?.error?.message;
+        setStatus('error');
+        const code = err.response?.data?.error?.code;
+        const msg  = err.response?.data?.error?.message;
 
-          if (code === 'TOKEN_EXPIRED') {
-            setMessage('This verification link has expired. Please request a new one from the login page.');
-          } else if (code === 'TOKEN_ALREADY_USED') {
-            setMessage('This verification link has already been used. Your account may already be verified — try logging in.');
-          } else {
-            setMessage(msg || 'This verification link is invalid or has already been used.');
-          }
+        if (code === 'TOKEN_EXPIRED') {
+          setMessage('This verification link has expired. Please request a new one from the login page.');
+        } else if (code === 'TOKEN_ALREADY_USED') {
+          setMessage('This verification link has already been used. Your account may already be verified — try logging in.');
+        } else {
+          setMessage(msg || 'This verification link is invalid or has already been used.');
         }
       });
-
-    return () => { cancelled = true; };
   }, [searchParams]);
 
   return (

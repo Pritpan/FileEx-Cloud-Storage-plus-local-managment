@@ -34,5 +34,13 @@ export const rateLimitConfig = {
     // Used for delete, create folder, rename, move
     windowMs: parseInt(process.env.RATE_LIMIT_DESTRUCTIVE_WINDOW, 10) || MINUTES_15,
     max: parseInt(process.env.RATE_LIMIT_DESTRUCTIVE_MAX, 10) || 30,
+  },
+  forgotPassword: {
+    windowMs: parseInt(process.env.RATE_LIMIT_FORGOT_PWD_WINDOW, 10) || HOUR_1,
+    max: parseInt(process.env.RATE_LIMIT_FORGOT_PWD_MAX, 10) || 3,
+  },
+  resetPassword: {
+    windowMs: parseInt(process.env.RATE_LIMIT_RESET_PWD_WINDOW, 10) || HOUR_1,
+    max: parseInt(process.env.RATE_LIMIT_RESET_PWD_MAX, 10) || 5,
   }
 };

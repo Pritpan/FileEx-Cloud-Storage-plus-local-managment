@@ -37,5 +37,10 @@ export const authService = {
     const { data } = await api.post(AUTH.RESEND_VERIFICATION, { email });
     return data; // { success, message }
   },
+
+  deleteAccount: async () => {
+    const { data } = await api.delete(AUTH.DELETE_ACCOUNT);
+    return data;
+  },
 };
 
