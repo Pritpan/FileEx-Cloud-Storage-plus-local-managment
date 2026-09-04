@@ -1,36 +1,62 @@
 /**
  * email.service.js — FileEX transactional email service
  *
- * Uses Nodemailer with an SMTP transport configured fully from environment
- * variables. No credentials are ever hardcoded.
+ * Uses the official Google Gmail REST API (over HTTPS Port 443) to bypass
+ * Render's strict outbound SMTP port blocking.
  *
  * Required env vars:
- *   SMTP_HOST, SMTP_PORT, SMTP_SECURE (true/false),
- *   SMTP_USER, SMTP_PASS,
- *   EMAIL_FROM   (e.g. "FileEX <no-reply@fileex.app>")
- *   CLIENT_URL   (e.g. https://app.fileex.app or http://localhost:5173)
+ *   GMAIL_CLIENT_ID
+ *   GMAIL_CLIENT_SECRET
+ *   GMAIL_REFRESH_TOKEN
+ *   EMAIL_FROM   (e.g. "FileEX <your_email@gmail.com>")
+ *   CLIENT_URL   (e.g. https://app.fileex.app or http://localhost:5174)
  */
 
-import nodemailer from 'nodemailer';
+import { google } from 'googleapis';
 
-let _transporter = null;
+let _gmailClient = null;
 
-function getTransporter() {
-  if (_transporter) return _transporter;
+function getGmailClient() {
+  if (_gmailClient) return _gmailClient;
 
-  _transporter = nodemailer.createTransport({
-    host:   process.env.SMTP_HOST,
-    port:   parseInt(process.env.SMTP_PORT || '587', 10),
-    secure: process.env.SMTP_SECURE === 'true',
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-    logger: true,
-    debug: true,
+  const oAuth2Client = new google.auth.OAuth2(
+    process.env.GMAIL_CLIENT_ID,
+    process.env.GMAIL_CLIENT_SECRET,
+    'https://developers.google.com/oauthplayground' // Redirect URI used during setup
+  );
+
+  oAuth2Client.setCredentials({
+    refresh_token: process.env.GMAIL_REFRESH_TOKEN,
   });
 
-  return _transporter;
+  _gmailClient = google.gmail({ version: 'v1', auth: oAuth2Client });
+  return _gmailClient;
+}
+
+/**
+ * Creates a raw Base64Url-encoded MIME email string required by the Gmail API.
+ */
+function createRawEmail(to, from, subject, htmlContent) {
+  const utf8Subject = `=?utf-8?B?${Buffer.from(subject).toString('base64')}?=`;
+  
+  const messageParts = [
+    `To: ${to}`,
+    `From: ${from}`,
+    `Subject: ${utf8Subject}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/html; charset="UTF-8"`,
+    '',
+    htmlContent,
+  ];
+
+  const message = messageParts.join('\n');
+  
+  // Gmail API requires Base64-URL encoding (RFC 4648)
+  return Buffer.from(message)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
 
 /**
@@ -52,26 +78,7 @@ export async function sendVerificationEmail({ to, name, rawToken }) {
     return true;
   }
 
-  const transporter = getTransporter();
-
-  await transporter.sendMail({
-    from:    fromAddr,
-    to,
-    subject: 'Verify your FileEX email address',
-    text: [
-      `Hi ${name},`,
-      '',
-      'Welcome to FileEX! Please verify your email address to activate your account.',
-      '',
-      `Verification link: ${verifyUrl}`,
-      '',
-      `This link expires in ${expiryHrs} hour${expiryHrs !== 1 ? 's' : ''}.`,
-      '',
-      'If you did not create a FileEX account, you can safely ignore this email.',
-      '',
-      '— The FileEX Team',
-    ].join('\n'),
-    html: `
+  const html = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -115,29 +122,28 @@ export async function sendVerificationEmail({ to, name, rawToken }) {
             </td>
           </tr>
 
-          <!-- Divider -->
-          <tr>
-            <td style="padding:0 40px;">
-              <hr style="border:none;border-top:1px solid #E6E8E4;margin:0;" />
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="padding:20px 40px;text-align:center;">
-              <p style="margin:0;font-size:12px;color:#9BA59F;">
-                © ${new Date().getFullYear()} FileEX. All rights reserved.
-              </p>
-            </td>
-          </tr>
-
         </table>
       </td>
     </tr>
   </table>
 </body>
-</html>`,
-  });
+</html>`;
+
+  const rawMessage = createRawEmail(to, fromAddr, 'Verify your FileEX email address', html);
+  const gmail = getGmailClient();
+
+  try {
+    await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: {
+        raw: rawMessage,
+      },
+    });
+    return true;
+  } catch (error) {
+    console.error('[email] Gmail API Error:', error.message);
+    throw error;
+  }
 }
 
 /**
@@ -159,26 +165,7 @@ export async function sendPasswordResetEmail({ to, name, rawToken }) {
     return true;
   }
 
-  const transporter = getTransporter();
-
-  await transporter.sendMail({
-    from:    fromAddr,
-    to,
-    subject: 'Reset your FileEX password',
-    text: [
-      `Hi ${name},`,
-      '',
-      'You requested to reset your FileEX password.',
-      '',
-      `Reset link: ${resetUrl}`,
-      '',
-      `This link expires in ${expiryMins} minutes.`,
-      '',
-      'If you did not request this, you can safely ignore this email. Your password will remain unchanged.',
-      '',
-      '— The FileEX Team',
-    ].join('\n'),
-    html: `
+  const html = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -222,27 +209,26 @@ export async function sendPasswordResetEmail({ to, name, rawToken }) {
             </td>
           </tr>
 
-          <!-- Divider -->
-          <tr>
-            <td style="padding:0 40px;">
-              <hr style="border:none;border-top:1px solid #E6E8E4;margin:0;" />
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="padding:20px 40px;text-align:center;">
-              <p style="margin:0;font-size:12px;color:#9BA59F;">
-                © ${new Date().getFullYear()} FileEX. All rights reserved.
-              </p>
-            </td>
-          </tr>
-
         </table>
       </td>
     </tr>
   </table>
 </body>
-</html>`,
-  });
+</html>`;
+
+  const rawMessage = createRawEmail(to, fromAddr, 'Reset your FileEX password', html);
+  const gmail = getGmailClient();
+
+  try {
+    await gmail.users.messages.send({
+      userId: 'me',
+      requestBody: {
+        raw: rawMessage,
+      },
+    });
+    return true;
+  } catch (error) {
+    console.error('[email] Gmail API Error:', error.message);
+    throw error;
+  }
 }
