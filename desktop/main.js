@@ -1,10 +1,11 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
-import { autoUpdater } from 'electron-updater';
+import electronUpdater from 'electron-updater';
+const { autoUpdater } = electronUpdater;
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
-
+import fsSync from 'fs';
 import https from 'https';
 import http from 'http';
 import {
