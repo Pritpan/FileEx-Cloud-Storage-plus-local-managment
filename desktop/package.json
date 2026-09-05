@@ -41,6 +41,13 @@
       ],
       "icon": "assets/icon.png"
     },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "FileEx"
+    },
     "publish": {
       "provider": "github",
       "owner": "Pritpan",
