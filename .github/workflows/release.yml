@@ -30,13 +30,23 @@ jobs:
         working-directory: ./web
         run: npm run build
 
-      # 2. Build and Publish the Desktop App
+      # 2. Build the Desktop App
       - name: Install Desktop Dependencies
         working-directory: ./desktop
         run: npm install
 
-      - name: Build and Publish Electron App
+      - name: Build Electron App
         working-directory: ./desktop
+        run: npm run build
+
+      # 3. Create a Single GitHub Release and Upload Assets
+      - name: Publish Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            desktop/dist-release/*.exe
+            desktop/dist-release/*.blockmap
+            desktop/dist-release/latest.yml
+          make_latest: true
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run publish
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
