@@ -1,0 +1,42 @@
+name: Build and Release Electron App
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers when you push a tag like "v0.1.0"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest # We need Windows to build the .exe
+
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 1. Build the React Frontend
+      - name: Install Web Dependencies
+        working-directory: ./web
+        run: npm install
+
+      - name: Build Web Frontend
+        working-directory: ./web
+        run: npm run build
+
+      # 2. Build and Publish the Desktop App
+      - name: Install Desktop Dependencies
+        working-directory: ./desktop
+        run: npm install
+
+      - name: Build and Publish Electron App
+        working-directory: ./desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run publish
