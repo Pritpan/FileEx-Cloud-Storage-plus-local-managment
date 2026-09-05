@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder -w",
+    "build": "electron-builder -w --publish never",
     "publish": "electron-builder -w --publish always"
   },
   "keywords": [],
