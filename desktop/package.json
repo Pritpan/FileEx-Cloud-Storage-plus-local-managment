@@ -44,7 +44,8 @@
     "publish": {
       "provider": "github",
       "owner": "Pritpan",
-      "repo": "FileEx-Cloud-Storage-plus-local-managment"
+      "repo": "FileEx-Cloud-Storage-plus-local-managment",
+      "releaseType": "release"
     }
   },
   "dependencies": {
