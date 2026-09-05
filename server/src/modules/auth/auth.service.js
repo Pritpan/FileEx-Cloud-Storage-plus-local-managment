@@ -263,15 +263,26 @@ export const deleteAccount = async (userId) => {
 
 export const changePassword = async (userId, currentPassword, newPassword) => {
   const user = await authRepository.findUserById(userId);
-  if (!user) throw createServiceError('User not found.', 404, 'NOT_FOUND');
-  
-  const match = await bcrypt.compare(currentPassword, user.hashedPassword);
-  if (!match) throw createServiceError('Incorrect current password.', 400, 'INVALID_PASSWORD');
-  
+  if (!user) {
+    throw createServiceError('User not found.', 404, 'NOT_FOUND');
+  }
+
+  const isMatch = await bcrypt.compare(currentPassword, user.hashedPassword);
+  if (!isMatch) {
+    throw createServiceError('The current password you entered is incorrect.', 401, 'INCORRECT_PASSWORD');
+  }
+
   const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
-  await authRepository.updateUser(userId, { hashedPassword });
-  
-  return { success: true, message: 'Password updated successfully.' };
+
+  await prisma.$transaction(async (tx) => {
+    await authRepository.updateUser(userId, { hashedPassword }, tx);
+    await authRepository.deleteAllRefreshTokens(userId, tx);
+  });
+
+  return {
+    success: true,
+    message: 'Password changed successfully. You have been logged out of other devices.',
+  };
 };
 
 export const forgotPassword = async (email) => {
@@ -330,29 +341,5 @@ export const resetPassword = async (rawToken, newPassword) => {
   return {
     success: true,
     message: 'Password reset successfully. You can now log in.',
-  };
-};
-
-export const changePassword = async (userId, currentPassword, newPassword) => {
-  const user = await authRepository.findUserById(userId);
-  if (!user) {
-    throw createServiceError('User not found.', 404, 'NOT_FOUND');
-  }
-
-  const isMatch = await bcrypt.compare(currentPassword, user.password);
-  if (!isMatch) {
-    throw createServiceError('The current password you entered is incorrect.', 401, 'INCORRECT_PASSWORD');
-  }
-
-  const hashedPassword = await bcrypt.hash(newPassword, SALT_ROUNDS);
-
-  await prisma.$transaction(async (tx) => {
-    await authRepository.updateUser(userId, { hashedPassword }, tx);
-    await authRepository.deleteAllRefreshTokens(userId, tx);
-  });
-
-  return {
-    success: true,
-    message: 'Password changed successfully.',
   };
 };
