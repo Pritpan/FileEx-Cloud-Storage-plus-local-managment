@@ -262,7 +262,7 @@ export const deleteAccount = async (userId) => {
 
 
 export const changePassword = async (userId, currentPassword, newPassword) => {
-  const user = await authRepository.findUserById(userId);
+  const user = await authRepository.findUserByIdWithPassword(userId);
   if (!user) {
     throw createServiceError('User not found.', 404, 'NOT_FOUND');
   }

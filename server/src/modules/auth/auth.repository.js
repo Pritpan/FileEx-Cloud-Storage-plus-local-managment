@@ -45,6 +45,12 @@ const findUserById = async (id, db = prisma) => {
   });
 };
 
+const findUserByIdWithPassword = async (id, db = prisma) => {
+  return db.user.findUnique({
+    where: { id },
+  });
+};
+
 const createUser = async ({ name, email, hashedPassword, avatarUrl = null }, db = prisma) => {
   return db.user.create({
     data: { name, email, hashedPassword, avatarUrl },
@@ -169,6 +175,7 @@ const deletePasswordResetTokensForUser = async (userId, db = prisma) => {
 const authRepository = {
   findUserByEmail,
   findUserById,
+  findUserByIdWithPassword,
   createUser,
   updateUser,
   saveRefreshToken,
