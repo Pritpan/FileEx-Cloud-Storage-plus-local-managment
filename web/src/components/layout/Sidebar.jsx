@@ -1,7 +1,7 @@
 import { Cloud, HardDrive, Settings, Clock, Trash2, Monitor, Layers } from 'lucide-react';
 import { SidebarItem } from './SidebarItem';
 import { StorageBar } from './StorageBar';
-import { useUIStore } from '@/store';
+import { useUIStore, useExplorerStore } from '@/store';
 
 /**
  * Sidebar — collapsible navigation.
@@ -11,6 +11,8 @@ import { useUIStore } from '@/store';
 export function Sidebar() {
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
+  const lastCloudPath = useExplorerStore((s) => s.lastCloudPath);
+  const lastLocalPath = useExplorerStore((s) => s.lastLocalPath);
 
   return (
     <aside
@@ -28,8 +30,8 @@ export function Sidebar() {
         onClick={toggleSidebar}
       >
         <div className={`flex items-center gap-2 min-w-0 ${collapsed ? 'justify-center w-full' : ''}`}>
-          <img src="/logo-light.png" alt="FileEX" className="w-6 h-6 object-cover rounded shrink-0 block dark:hidden" />
-          <img src="/logo-dark.png"  alt="FileEX" className="w-6 h-6 object-cover rounded shrink-0 hidden dark:block" />
+          <img src="./logo-light.png" alt="FileEX" className="w-6 h-6 object-cover rounded shrink-0 block dark:hidden" />
+          <img src="./logo-dark.png"  alt="FileEX" className="w-6 h-6 object-cover rounded shrink-0 hidden dark:block" />
           {!collapsed && (
             <span className="font-semibold text-base text-foreground dark:text-white tracking-tight truncate">
               FileEX
@@ -52,11 +54,11 @@ export function Sidebar() {
 
         {/* Local — Electron only */}
         {window.electronAPI && (
-          <SidebarItem icon={Monitor} label="Local (Earth)" to="/local" collapsed={collapsed} />
+          <SidebarItem icon={Monitor} label="Local (Earth)" to={lastLocalPath} collapsed={collapsed} />
         )}
 
         {/* Cloud — replaces old "My Files" */}
-        <SidebarItem icon={Cloud} label="Cloud (Sky)" to="/explorer" collapsed={collapsed} />
+        <SidebarItem icon={Cloud} label="Cloud (Sky)" to={lastCloudPath} collapsed={collapsed} />
 
         {/* MY CLOUD section */}
         {!collapsed && (

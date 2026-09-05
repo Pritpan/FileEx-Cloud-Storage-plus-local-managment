@@ -13,6 +13,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { toast } from 'sonner';
+import { useExplorerStore } from '@/store';
 
 // ---------------------------------------------------------------------------
 // Local entry adapter
@@ -48,10 +49,28 @@ export function adaptEntry(fsEntry) {
 // ---------------------------------------------------------------------------
 
 export function useLocalDirectory() {
-  const [currentPath, setCurrentPath] = useState(null);   // null = "This PC" root
+  const localFsPath = useExplorerStore(s => s.localFsPath);
+  const localBreadcrumbs = useExplorerStore(s => s.localBreadcrumbs);
+  const setLocalFsPath = useExplorerStore(s => s.setLocalFsPath);
+  const setLocalBreadcrumbs = useExplorerStore(s => s.setLocalBreadcrumbs);
+
+  const [currentPath, setCurrentPathState] = useState(localFsPath);
   const [entries, setEntries]         = useState([]);
   const [drives, setDrives]           = useState([]);
-  const [breadcrumbs, setBreadcrumbs] = useState([{ label: 'This PC', path: null }]);
+  const [breadcrumbs, setBreadcrumbsState] = useState(localBreadcrumbs);
+
+  const setCurrentPath = useCallback((path) => {
+    setCurrentPathState(path);
+    setLocalFsPath(path);
+  }, [setLocalFsPath]);
+
+  const setBreadcrumbs = useCallback((setterOrValue) => {
+    setBreadcrumbsState((prev) => {
+      const next = typeof setterOrValue === 'function' ? setterOrValue(prev) : setterOrValue;
+      setLocalBreadcrumbs(next);
+      return next;
+    });
+  }, [setLocalBreadcrumbs]);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState(null);
 

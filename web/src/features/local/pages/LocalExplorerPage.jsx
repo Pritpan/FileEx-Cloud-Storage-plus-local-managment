@@ -157,11 +157,15 @@ export function LocalExplorerPage({ currentCloudFolderId = null }) {
   } = useLocalSearch(currentPath, debouncedQuery);
 
   // ── Root reset on mount ────────────────────────────────────────────────────
-  // Every time the user navigates to /local (this component mounts), reset
-  // to the platform root via IPC getDefaultRoot() — no hard-coded C:\ in React.
+  // If we have a saved path from Zustand, just refresh it to load its contents.
+  // Otherwise, reset to the platform root via IPC getDefaultRoot().
   useEffect(() => {
     if (isElectron) {
-      resetToRoot();
+      if (currentPath) {
+        refresh();
+      } else {
+        resetToRoot();
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally empty: run only on first mount per navigation

@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useExplorerStore } from '@/store';
 import { Cloud, HardDrive } from 'lucide-react';
 import { Toolbar } from '../components/Toolbar';
 import { BreadcrumbNav } from '../components/BreadcrumbNav';
@@ -56,6 +57,11 @@ export function ExplorerPage() {
   const [moveState, setMoveState] = useState({ open: false, item: null });
   const [deleteState, setDeleteState] = useState({ open: false, item: null });
   const [propertiesState, setPropertiesState] = useState({ open: false, item: null });
+
+  const setLastCloudPath = useExplorerStore((s) => s.setLastCloudPath);
+  useEffect(() => {
+    setLastCloudPath(location.pathname + location.search + location.hash);
+  }, [location, setLastCloudPath]);
 
   const handleRename = (item) => setRenameState({ open: true, item });
   const handleMove   = (item) => setMoveState({ open: true, item });
