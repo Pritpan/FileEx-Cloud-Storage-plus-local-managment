@@ -5,12 +5,49 @@
   "main": "main.js",
   "type": "module",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder -w",
+    "publish": "electron-builder -w --publish always"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^44.0.0"
+    "electron": "^44.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.fileex.desktop",
+    "productName": "FileEx",
+    "directories": {
+      "output": "dist-release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "filesystem/**/*",
+      "assets/**/*",
+      {
+        "from": "../web/dist",
+        "to": "web-dist",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "assets/icon.png"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Pritpan",
+      "repo": "FileEx-Cloud-Storage-plus-local-managment"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

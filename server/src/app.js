@@ -16,13 +16,25 @@ app.use(helmet());
 
 app.use(cors({
   origin: (origin, callback) => {
+    // Electron packaged apps make requests from file:// which results in a
+    // null/undefined origin. We allow this explicitly for the desktop client.
     if (!origin) return callback(null, true);
-    
-    const allowedOrigins = process.env.CLIENT_ORIGIN ? [process.env.CLIENT_ORIGIN] : [];
-    
-    const isLocalhost = origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:');
-    
-    if ((process.env.NODE_ENV !== 'production' && isLocalhost) || allowedOrigins.includes(origin)) {
+
+    // All allowed origins come from the CLIENT_ORIGIN environment variable.
+    // Use a comma-separated list for multiple origins:
+    //   CLIENT_ORIGIN=https://fileex-web.vercel.app,https://fileex-preview.vercel.app
+    const allowedOrigins = process.env.CLIENT_ORIGIN
+      ? process.env.CLIENT_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+      : [];
+
+    const isLocalhost =
+      origin.startsWith('http://localhost:') ||
+      origin.startsWith('http://127.0.0.1:');
+
+    if (
+      allowedOrigins.includes(origin) ||
+      (process.env.NODE_ENV !== 'production' && isLocalhost)
+    ) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));

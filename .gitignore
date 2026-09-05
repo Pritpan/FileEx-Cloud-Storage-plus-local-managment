@@ -104,6 +104,7 @@ server/.cache/
 
 # Electron builder output
 desktop/dist/
+desktop/dist-release/
 desktop/build/
 desktop/out/
 desktop/release/

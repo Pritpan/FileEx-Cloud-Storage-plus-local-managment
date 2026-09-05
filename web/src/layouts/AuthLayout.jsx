@@ -8,8 +8,8 @@ import { useThemeStore } from '@/store';
 function AuthLayout() {
   const theme = useThemeStore((s) => s.theme);
   const bgSrc = theme === 'dark'
-    ? '/backgrounds/cloud-dark.png'
-    : '/backgrounds/cloud-light.png';
+    ? './backgrounds/cloud-dark.png'
+    : './backgrounds/cloud-light.png';
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4 sm:p-8 overflow-hidden theme-cloud">

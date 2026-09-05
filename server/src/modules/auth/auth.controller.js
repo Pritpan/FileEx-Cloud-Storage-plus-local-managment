@@ -41,6 +41,7 @@ const setRefreshCookie = (res, refreshToken) => {
     secure: isProd,
     sameSite: isProd ? 'none' : 'lax',
     path: '/api/v1/auth/refresh',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
 };
 

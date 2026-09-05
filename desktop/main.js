@@ -1,9 +1,10 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
-import fsSync from 'fs';
+
 import https from 'https';
 import http from 'http';
 import {
@@ -30,7 +31,9 @@ const __dirname = path.dirname(__filename);
 // ---------------------------------------------------------------------------
 const isDev = !app.isPackaged;
 const DEV_URL = 'http://localhost:5174';
-const PROD_FILE = path.join(__dirname, '..', 'web', 'dist', 'index.html');
+const PROD_FILE = app.isPackaged
+  ? path.join(__dirname, 'web-dist', 'index.html')
+  : path.join(__dirname, '..', 'web', 'dist', 'index.html');
 
 // ---------------------------------------------------------------------------
 // IPC Handlers — E2: Secure IPC Foundation
@@ -45,6 +48,24 @@ const PROD_FILE = path.join(__dirname, '..', 'web', 'dist', 'index.html');
 ipcMain.handle('app:get-info', () => ({
   name: 'FileEX',
   platform: process.platform,
+}));
+
+/**
+ * Channel: app:get-config
+ * Returns runtime configuration that the renderer needs but must not be
+ * baked into the web bundle (e.g. backend API URL).
+ *
+ * Security:
+ *  - Only named, safe keys are returned — no process.env dump.
+ *  - The renderer cannot forge this; it comes from the Main Process.
+ *  - Operators can override FILEEX_API_URL via environment variable
+ *    at launch time without rebuilding the app.
+ */
+ipcMain.handle('app:get-config', () => ({
+  // Production URL is the default — end users need zero setup.
+  // FILEEX_API_URL env var (or fileex.config.env file) overrides this
+  // for self-hosted or custom deployments only.
+  apiUrl: process.env.FILEEX_API_URL || 'https://fileex.onrender.com/api/v1',
 }));
 
 // ---------------------------------------------------------------------------
@@ -548,13 +569,16 @@ function createWindow() {
   });
 
   if (isDev) {
-    // Development: load Vite dev server
-    win.loadURL(DEV_URL);
+    // Development: try to load Vite dev server, fall back to built dist if server is not running
+    win.loadURL(DEV_URL).catch((err) => {
+      console.warn(`[FileEx] Dev server at ${DEV_URL} not reachable. Falling back to built bundle at ${PROD_FILE}`);
+      win.loadFile(PROD_FILE);
+    });
 
     // Open DevTools automatically in development
     win.webContents.openDevTools({ mode: 'detach' });
   } else {
-    // Production: load the built React app from web/dist
+    // Production: load the built React app from web-dist
     win.loadFile(PROD_FILE);
   }
 }
@@ -564,6 +588,12 @@ function createWindow() {
 // ---------------------------------------------------------------------------
 app.whenReady().then(() => {
   createWindow();
+
+  // Automatically check for updates silently in the background
+  // If a new version exists on GitHub, it will download and prompt the user.
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
 
   // macOS: re-create the window when the dock icon is clicked and no windows
   // are open (standard macOS behaviour).

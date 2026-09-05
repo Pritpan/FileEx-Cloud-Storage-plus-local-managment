@@ -47,6 +47,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
    */
   getAppInfo: () => ipcRenderer.invoke('app:get-info'),
 
+  /**
+   * getConfig()
+   * Returns runtime configuration injected by the Main Process.
+   * Returns a Promise → { apiUrl: string }
+   *
+   * The renderer NEVER has access to process.env or the IPC channel name.
+   * This is the only safe, controlled pathway to runtime config.
+   */
+  getConfig: () => ipcRenderer.invoke('app:get-config'),
+
   // -------------------------------------------------------------------------
   // E3 — Native OS dialogs
   // -------------------------------------------------------------------------

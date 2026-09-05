@@ -9,10 +9,10 @@ import useThemeStore from '@/store/theme.store';
 
 // Maps the current theme + location to the correct background image filename.
 const BACKGROUND_MAP = {
-  'light-local': '/backgrounds/earth-light.png',
-  'dark-local':  '/backgrounds/earth-dark.png',
-  'light-cloud': '/backgrounds/cloud-light.png',
-  'dark-cloud':  '/backgrounds/cloud-dark.png',
+  'light-local': './backgrounds/earth-light.png',
+  'dark-local':  './backgrounds/earth-dark.png',
+  'light-cloud': './backgrounds/cloud-light.png',
+  'dark-cloud':  './backgrounds/cloud-dark.png',
 };
 
 function DashboardLayout() {
