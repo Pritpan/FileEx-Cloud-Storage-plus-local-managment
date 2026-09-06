@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './modules/auth/auth.routes.js';
 import fileRoutes from './modules/files/index.js';
 import storageRoutes from './modules/storage/index.js';
+import prisma from './config/prisma.js';
 
 const app = express();
 
@@ -49,6 +50,23 @@ app.use(express.urlencoded({ extended: false }));
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', app: 'fileex-server' });
+});
+
+app.get('/health/db', async (_req, res) => {
+  try {
+    await prisma.$queryRawUnsafe('SELECT 1');
+    return res.status(200).json({
+      status: 'ok',
+      database: 'connected',
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error('[HealthCheck] Database ping failed:', error.message);
+    return res.status(500).json({
+      status: 'error',
+      database: 'disconnected',
+    });
+  }
 });
 
 app.use('/api/v1/auth', authRoutes);
